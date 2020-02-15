@@ -1,6 +1,6 @@
 
 .env
 .vscode/settings.json
-guilds.json
+VioletVenv/
 *.json
 *.pyc

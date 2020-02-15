@@ -1,6 +1,8 @@
 import json
 from discord.ext import commands
 
+TestServerEmoji = "<:IDontKnowThatCommand:676544628274757633>" # Emoji is from the test server. Anime girl with question marks.
+
 class Events(commands.Cog):
     def __init__(self, bot):
             self.bot = bot
@@ -29,9 +31,13 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
-            await ctx.send("<:IDontKnowThatCommand:676544628274757633>") # Emoji is from the test server. Anime girl with question marks.
+            await ctx.send(TestServerEmoji)
             return
-        if hasattr(ctx.command, 'on_error'):
+        elif isinstance(error, commands.NoPrivateMessage):
+            await ctx.send(f"{ctx.command} can not be used in DMs.")
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("Missing required argument!")
+        elif hasattr(ctx.command, 'on_error'):
             return
         else:
             raise error
@@ -63,11 +69,14 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_typing(self, channel, user, when):
-        with open('guilds.json', 'r') as f:
-            cstmguild = json.load(f)
-        await guild_data(cstmguild, user)
-        with open('guilds.json', 'w') as f:
-                json.dump(cstmguild, f, indent=4)
+        try:
+            with open('guilds.json', 'r') as f:
+                cstmguild = json.load(f)
+            await guild_data(cstmguild, user)
+            with open('guilds.json', 'w') as f:
+                    json.dump(cstmguild, f, indent=4)
+        except AttributeError:
+            return
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -88,8 +97,8 @@ class Events(commands.Cog):
                     json.dump(cstmguild, f, indent=4)
         for dellist in list(cstmguild[str(member.guild.id)]['VC']['VCList']):
             vclist = self.bot.get_channel(int(dellist))
-            for delmember in cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]:
-                ownerid = member.guild.get_member(int(delmember))
+            for delmember in list(cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]):
+                #ownerid = member.guild.get_member(int(delmember))
                 cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] = len(vclist.members)
                 if cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] == 0 and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Static'] == False:
                     if before.channel == vclist:
@@ -97,13 +106,15 @@ class Events(commands.Cog):
                     elif after.channel == vclist:
                         await after.channel.delete(reason='VC is empty.')
                     del cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]
-                for msgctx in cstmguild[str(member.guild.id)]['VC']['AutoVC']:
-                    if after.channel == vclist and member.id == ownerid.id and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['AutoMenu'] == True and cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'] != False:
-                        ctxchl = self.bot.get_channel(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Channel']))
-                        getcmd = self.bot.get_command('vc')
-                        getmsgctx = await ctxchl.fetch_message(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'])) # Only applies to the one that ran the command | Fix this
-                        ctxmsg = await self.bot.get_context(getmsgctx)
-                        await ctxmsg.invoke(getcmd)
+                with open('guilds.json', 'w') as f:
+                    json.dump(cstmguild, f, indent=4)
+                #for msgctx in cstmguild[str(member.guild.id)]['VC']['AutoVC']:
+                #    if after.channel == vclist and member.id == ownerid.id and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['AutoMenu'] == True and cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'] != False:
+                #        ctxchl = self.bot.get_channel(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Channel']))
+                #        getcmd = self.bot.get_command('vc')
+                #        getmsgctx = await ctxchl.fetch_message(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'])) # Only applies to the one that ran the command | Fix this
+                #        ctxmsg = await self.bot.get_context(getmsgctx)
+                #        await ctxmsg.invoke(getcmd)
 
 async def guild_data(cstmguild, user):
     if not str(user.guild.id) in cstmguild:
