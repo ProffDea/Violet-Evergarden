@@ -66,9 +66,9 @@ class Settings(commands.Cog):
             await ctx.send(f"Character limit is 128. You reached {len(changestatus)} characters.")
 
 
-    @commands.command(name='Vc', help='While not in VC will bring up the user settings.\nIn VC will bring up current VC settings.\nTyping arguments after command name while in personal VC will bring up user selection menu. ex. v.vc "Violet Evergarden" ProfDea') # False = empty | True = not empty
+    @commands.command(name='Vc', help="Allows the use of personal voice channels.\n'v.Vc' while not in a voice channel will bring up the 'User Menu'.\n'v.Vc' while in a normal voice channel will bring up the 'Main Menu'.\n'v.Vc' while in a personal voice channel will bring up the 'Voice Channel Setting Menu'.\n'v.Vc [argument]' while in a personal voice channel will bring up the 'Member Menu'.") # False = empty | True = not empty
     @commands.guild_only()
-    async def vc(self, ctx, *members):
+    async def vc(self, ctx, *menu):
         try:
             with open('guilds.json', 'r') as f:
                 cstmguild = json.load(f)
@@ -113,7 +113,12 @@ class Settings(commands.Cog):
                             for leowner in cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist]:
                                 ownertemp = ctx.guild.get_member(int(leowner))
                                 if ownertemp.id == ctx.author.id:
-                                    if len(members) != 0:
+                                    #for quickmenupull in menu:
+                                    #    if quickmenupull.lower() == 'user':
+                                    #        usercheck = True
+                                    #    else:
+                                    #        usercheck = False
+                                    if len(menu) != 0:
                                         try:
                                             def setmember(m):
                                                 return m.content and m.channel == chl and m.author == aut
@@ -121,7 +126,7 @@ class Settings(commands.Cog):
                                             cleanlist = []
                                             while True:
                                                 # Work in progress
-                                                for argmember in members:
+                                                for argmember in menu:
                                                     for listmember in ctx.guild.members:
                                                         if listmember.name.lower() in argmember.lower() or listmember.mention in argmember or str(listmember.id) in argmember or listmember.display_name.lower() in argmember.lower() or str(listmember) in argmember:
                                                             cleanlist += [f"{str(listmember)}\n"]
@@ -139,9 +144,9 @@ class Settings(commands.Cog):
                                                         notlist = "\n"
                                                         addmore = "\nPlease add members to this list!\n\n"
                                                     else:
-                                                        notlist = "\nList of members:\n"
+                                                        notlist = "\nList of members:\n\n"
                                                         addmore = "\nWhat would you like to do with everyone in the list?\n\n"
-                                                    listmenu = await ctx.send(f"```{notlist}{membermsg}{addmore}1.) Add more members to the list\n\nType 'exit' to cancel settings.\n```")
+                                                    listmenu = await ctx.send(f"```{notlist}{membermsg}{addmore}1.) Add more members to the list\n\nPlease enter one of the corresponding numbers.\nType 'exit' to cancel settings.\n```")
                                                 listcheck = await self.bot.wait_for('message', timeout=120, check=setmember)
                                                 if listcheck.content == '1' or listcheck.content.lower() == 'add':
                                                     await listmenu.delete()
@@ -152,13 +157,14 @@ class Settings(commands.Cog):
                                                         listcount = 0
                                                         addmenu = addmenu + 1
                                                         if addmenu == 1:
-                                                            addoptions = await ctx.send(f"```\nEnter valid users to add to list:\n{membermsg}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
+                                                            addoptions = await ctx.send(f"```\nEnter valid users to add to list:\n\n{membermsg}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
                                                         addwait = await self.bot.wait_for('message', timeout=120, check=addcheck)
                                                         inlist = []
                                                         for addmember in ctx.guild.members:
                                                             if addmember.name.lower() in addwait.content.lower() or addmember.mention in addwait.content or str(addmember.id) in addwait.content or addmember.display_name.lower() in addwait.content.lower() or str(addmember) in addwait.content:
                                                                 if not str(addmember) in membermsg:
                                                                     membermsg += f"{str(addmember)}\n"
+                                                                    cleanlist += f"{str(addmember)}\n"
                                                                     await addoptions.edit(content=f"```\nEnter valid users to add to list:\n{membermsg}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
                                                                     continue
                                                                 else:
@@ -374,7 +380,7 @@ class Settings(commands.Cog):
                     while True:
                         outfirst_menu = outfirst_menu + 1
                         if outfirst_menu == 1:
-                            outmenu = await ctx.send(f"```\n{outautoempty}\n\n1.) Work in progress\n\nType 'exit' to cancel settings.\nPlease enter one of the corresponding numbers.\n```")
+                            outmenu = await ctx.send(f"```\n{outautoempty}\n\n1.) Work in progress\n\nPlease enter one of the corresponding numbers.\nType 'exit' to cancel settings.\n```")
                         outautowait = await self.bot.wait_for('message', timeout=120, check=outautofunc)
                         if outautowait.content == '1':
                             await outmenu.delete()
