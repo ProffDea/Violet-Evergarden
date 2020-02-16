@@ -165,7 +165,8 @@ class Settings(commands.Cog):
                                                                 if not str(addmember) in membermsg:
                                                                     membermsg += f"{str(addmember)}\n"
                                                                     cleanlist += [str(addmember)]
-                                                                    await addoptions.edit(content=f"```\nEnter valid users to add to list:\n\n{membermsg}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
+                                                                    replacemembermsg = 'No Members Selected\n'
+                                                                    await addoptions.edit(content=f"```\nEnter valid users to add to list:\n\n{membermsg.replace(replacemembermsg, '')}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
                                                                     continue
                                                                 else:
                                                                     inlist += [f"**{str(addmember)}**"]
