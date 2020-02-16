@@ -129,7 +129,7 @@ class Settings(commands.Cog):
                                                 for argmember in menu:
                                                     for listmember in ctx.guild.members:
                                                         if listmember.name.lower() in argmember.lower() or listmember.mention in argmember or str(listmember.id) in argmember or listmember.display_name.lower() in argmember.lower() or str(listmember) in argmember:
-                                                            cleanlist += [f"{str(listmember)}\n"]
+                                                            cleanlist += [str(listmember)]
                                                             continue
                                                         else:
                                                             pass
@@ -138,7 +138,7 @@ class Settings(commands.Cog):
                                                 if listcount == 1:
                                                     membermsg = ""
                                                     for templist in reallist:
-                                                        membermsg += templist
+                                                        membermsg += f"{str(templist)}\n"
                                                     if membermsg == "":
                                                         membermsg = "No Members Selected\n"
                                                         notlist = "\n"
@@ -164,8 +164,8 @@ class Settings(commands.Cog):
                                                             if addmember.name.lower() in addwait.content.lower() or addmember.mention in addwait.content or str(addmember.id) in addwait.content or addmember.display_name.lower() in addwait.content.lower() or str(addmember) in addwait.content:
                                                                 if not str(addmember) in membermsg:
                                                                     membermsg += f"{str(addmember)}\n"
-                                                                    cleanlist += f"{str(addmember)}\n"
-                                                                    await addoptions.edit(content=f"```\nEnter valid users to add to list:\n{membermsg}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
+                                                                    cleanlist += [str(addmember)]
+                                                                    await addoptions.edit(content=f"```\nEnter valid users to add to list:\n\n{membermsg}\nType 'back' to go back.\nType 'exit' to cancel settings.\n```")
                                                                     continue
                                                                 else:
                                                                     inlist += [f"**{str(addmember)}**"]
