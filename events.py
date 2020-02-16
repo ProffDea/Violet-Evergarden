@@ -37,6 +37,8 @@ class Events(commands.Cog):
             await ctx.send(f"{ctx.command} can not be used in DMs.")
         elif isinstance(error, commands.MissingRequiredArgument):
             await ctx.send("Missing required argument!")
+        elif isinstance(error, commands.NotOwner):
+            return
         elif hasattr(ctx.command, 'on_error'):
             return
         else:

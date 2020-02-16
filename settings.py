@@ -73,9 +73,10 @@ class Settings(commands.Cog):
             with open('guilds.json', 'r') as f:
                 cstmguild = json.load(f)
             try:
+                menuexit = 'Menu has been exited.'
                 chl = ctx.channel
                 aut = ctx.author
-                if bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == False:
+                if bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == False: # Checks if there is a main automated voice channel or not | True = runs if not empty | False = runs if empty
                     if ctx.author.voice.channel.permissions_for(ctx.author).manage_channels == True:
                         def autovc(m):
                             return m.content and m.channel == chl and m.author == aut
@@ -88,7 +89,7 @@ class Settings(commands.Cog):
                                 autovcwait = await self.bot.wait_for('message', timeout=120, check=autovc)
                                 if autovcwait.content == '1' or autovcwait.content.lower() == 'yes':
                                     await startmenu.delete()
-                                    await ctx.send(f"```\nCurrent voice channel '{ctx.author.voice.channel.name}' has been set to the main automated voice channel.\nPlease re-join the voice channel to put it into effect.\n```\nMenu has been exited.")
+                                    await ctx.send(f"```\nCurrent voice channel '{ctx.author.voice.channel.name}' has been set to the main automated voice channel.\nPlease re-join the voice channel to put it into effect.\n```\n{menuexit}")
                                     cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][str(ctx.author.voice.channel.id)] = {}
                                     cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][str(ctx.author.voice.channel.id)]['Channel'] = ctx.channel.id
                                     cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][str(ctx.author.voice.channel.id)]['Message'] = False # Keep this false until AutoMenu is fixed | Original: ctx.message.id
@@ -96,7 +97,7 @@ class Settings(commands.Cog):
                                     break
                                 elif autovcwait.content == '2' or autovcwait.content.lower() == 'no':
                                     await startmenu.delete()
-                                    await ctx.send('```\nThere is currently no automated voice channel set.\n```\nMenu has been exited.')
+                                    await ctx.send(f'```\nThere is currently no automated voice channel set.\n```\n{menuexit}')
                                     break
                                 elif autovcwait.content != '1' or autovcwait.content.lower() != 'yes' or autovcwait.content != '2' or autovcwait.content.lower() != 'no':
                                     await ctx.send('Please choose one of the corresponding numbers!')
@@ -106,7 +107,7 @@ class Settings(commands.Cog):
                             return
                     else:
                         await ctx.send(f"`Manage Channel` permissions required to access automated voice channel menu for '{ctx.author.voice.channel.name}'!")
-                elif bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == True:
+                elif bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == True: # Checks if there is a main automated voice channel or not | True = runs if not empty | False = runs if empty
                     for lelist in cstmguild[str(ctx.guild.id)]['VC']['VCList']:
                         temp = self.bot.get_channel(int(lelist))
                         if temp.id == ctx.author.voice.channel.id:
@@ -118,7 +119,7 @@ class Settings(commands.Cog):
                                     #        usercheck = True
                                     #    else:
                                     #        usercheck = False
-                                    if len(menu) != 0:
+                                    if len(menu) != 0: # Runs if there were any arguments
                                         try:
                                             def setmember(m):
                                                 return m.content and m.channel == chl and m.author == aut
@@ -191,11 +192,11 @@ class Settings(commands.Cog):
                                                             break
                                                         elif addwait.content.lower() == 'exit':
                                                             await addoptions.delete()
-                                                            await ctx.send('Menu has been exited.')
+                                                            await ctx.send(menuexit)
                                                             return
                                                 elif listcheck.content.lower() == 'exit':
                                                     await listmenu.delete()
-                                                    await ctx.send('Menu has been exited.')
+                                                    await ctx.send(menuexit)
                                                     return
                                                 elif listcheck.content != '1' or listcheck.content.lower() != 'add' or listcheck.content.lower() != 'exit':
                                                     await ctx.send('Please choose one of the corresponding numbers!')
@@ -207,22 +208,22 @@ class Settings(commands.Cog):
                                         if cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]["Static"] == False:
                                             staticmsg = "Permanent VC is Disabled"
                                             staticstatus = True
-                                            staticend = f"```\n'{temp.name}' is now a permanent voice channel.\nIt will not be deleted when the voice channel is empty.\n```\nMenu has been exited."
+                                            staticend = f"```\n'{temp.name}' is now a permanent voice channel.\nIt will not be deleted when the voice channel is empty.\n```\n{menuexit}"
                                         else:
                                             staticmsg = "Permanent VC is Enabled"
                                             staticstatus = False
-                                            staticend = f"```\n'{temp.name}' is no longer a permanent voice channel.\nIt will get deleted when the voice channel is empty.\n```\nMenu has been exited."
+                                            staticend = f"```\n'{temp.name}' is no longer a permanent voice channel.\nIt will get deleted when the voice channel is empty.\n```\n{menuexit}"
                                         for checkmsg in cstmguild[str(ctx.guild.id)]['VC']['AutoVC']:
                                             if cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][checkmsg]['Message'] == False:
                                                 automenumsg = ''
                                             elif cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]["AutoMenu"] == True and cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][checkmsg]['Message'] != False:
                                                 automenumsg = "\n4.) Quick Menu is Turned On"
                                                 automenustatus = False
-                                                automenuend = f"```\n'{temp.name}' will no longer bother the owner whenever they join.\nIt will not bring up the menu for the owner and not mention them when they join.\n```\nMenu has been exited."
+                                                automenuend = f"```\n'{temp.name}' will no longer bother the owner whenever they join.\nIt will not bring up the menu for the owner and not mention them when they join.\n```\n{menuexit}"
                                             elif cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]["AutoMenu"] == False and cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][checkmsg]['Message'] != False:
                                                 automenumsg = "\n4.) Quick Menu is Turned Off"
                                                 automenustatus = True
-                                                automenuend = f"```\n'{temp.name}' will now bother the owner whenever they join.\nIt will bring up the menu for the owner and mention them when they join.\n```\nMenu has been exited."
+                                                automenuend = f"```\n'{temp.name}' will now bother the owner whenever they join.\nIt will bring up the menu for the owner and mention them when they join.\n```\n{menuexit}"
                                             def settings(m):
                                                 return m.content and m.channel == chl and m.author == aut
                                             try:
@@ -260,11 +261,11 @@ class Settings(commands.Cog):
                                                                     else:
                                                                         await limit_menu.delete()
                                                                         await temp.edit(reason="Changing user limit", user_limit=limitnumber)
-                                                                        await ctx.send(f"```\n'{temp.name}' user limit has been set to {afternumber}!\n```\nMenu has been exited.")
+                                                                        await ctx.send(f"```\n'{temp.name}' user limit has been set to {afternumber}!\n```\n{menuexit}")
                                                                         return
                                                             elif userlimit.content.lower() == 'exit':
                                                                 await limit_menu.delete()
-                                                                await ctx.send('```\nMenu has been exited.\n```')
+                                                                await ctx.send(menuexit)
                                                                 return
                                                             elif userlimit.content.lower() == 'back':
                                                                 await limit_menu.delete()
@@ -285,7 +286,7 @@ class Settings(commands.Cog):
                                                             changename = await self.bot.wait_for('message', timeout=120, check=setname)
                                                             if changename.content.lower() == 'exit':
                                                                 await name_menu.delete()
-                                                                await ctx.send('Menu has been exited.')
+                                                                await ctx.send(menuexit)
                                                                 return
                                                             elif changename.content.lower() == 'back':
                                                                 await name_menu.delete()
@@ -293,7 +294,7 @@ class Settings(commands.Cog):
                                                             elif changename.content.lower() != 'exit' or changename.content.lower() != 'back':
                                                                 await name_menu.delete()
                                                                 await temp.edit(reason='Change name', name=changename.content)
-                                                                await ctx.send(f"```\nVoice channel's name has been changed to '{temp.name}'\n```\nMenu has been exited.")
+                                                                await ctx.send(f"```\nVoice channel's name has been changed to '{temp.name}'\n```\n{menuexit}")
                                                                 return
                                                     elif waitsetting.content == '3' or 'permanent' in waitsetting.content.lower():
                                                         await first_menu.delete()
@@ -311,7 +312,7 @@ class Settings(commands.Cog):
                                                         return
                                                     elif waitsetting.content.lower() == 'exit':
                                                         await first_menu.delete()
-                                                        await ctx.send('Menu has been exited.')
+                                                        await ctx.send(menuexit)
                                                         return
                                                     elif waitsetting.content != '1' or waitsetting.content.lower() != 'user limit' or waitsetting.content.lower() != 'exit' or waitsetting.content.lower() != 'back':
                                                         await ctx.send('Please choose one of the corresponding numbers!')
@@ -320,8 +321,16 @@ class Settings(commands.Cog):
                                                 await ctx.send('Menu has been exited due to timeout.')
                                                 return
                                 elif ownertemp.id != ctx.author.id:
-                                    await ctx.send(f"**{ownertemp.name}** is the owner of '{temp.name}', not **{ctx.author.name}**!")
-                                    return
+                                    if not ownertemp in ctx.author.voice.channel.members:
+                                        cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][ctx.author.id] = cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]
+                                        del cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]
+                                        await ctx.send(f"**{ctx.author.name}** is the new owner of '{ctx.author.voice.channel.name}'!\nOld owner was **{ownertemp.name}**.")
+                                        with open('guilds.json', 'w') as f:
+                                            json.dump(cstmguild, f, indent=4)
+                                        return
+                                    else:
+                                        await ctx.send(f"**{ownertemp.name}** is the owner of '{temp.name}', __NOT__ **{ctx.author.name}**!")
+                                        return
                     if ctx.author.voice.channel.permissions_for(ctx.author).manage_channels == True:
                         mainvc = ''
                         for vcname in cstmguild[str(ctx.guild.id)]['VC']['AutoVC']:
@@ -343,18 +352,18 @@ class Settings(commands.Cog):
                                     cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][str(ctx.author.voice.channel.id)] = {}
                                     cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][str(ctx.author.voice.channel.id)]['Channel'] = ctx.channel.id
                                     cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][str(ctx.author.voice.channel.id)]['Message'] = ctx.message.id
-                                    await ctx.send(f"```\nCurrent voice channel '{ctx.author.voice.channel.name}' has been set to the main automated voice channel.\nPlease re-join the voice channel to put it into effect.\n```\nMenu has been exited.")
+                                    await ctx.send(f"```\nCurrent voice channel '{ctx.author.voice.channel.name}' has been set to the main automated voice channel.\nPlease re-join the voice channel to put it into effect.\n```\n{menuexit}")
                                     await ctx.author.move_to(None)
                                     break
                                 elif autovcwait.content == '2' or autovcwait.content.lower() == 'no':
                                     await overmenu.delete()
-                                    await ctx.send(f"```\nMain automated voice channel '{mainvc}' has not been changed.\n```\nMenu has been exited.")
+                                    await ctx.send(f"```\nMain automated voice channel '{mainvc}' has not been changed.\n```\n{menuexit}")
                                     break
                                 elif autovcwait.content == '3' or autovcwait.content.lower() == 'deprecate main automated voice channel':
                                     await overmenu.delete()
                                     for oldvc in list(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']):
                                         del cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][oldvc]
-                                    await ctx.send('```\nThere is no longer any main automated voice channel.\n```\nMenu has been exited.')
+                                    await ctx.send(f'```\nThere is no longer any main automated voice channel.\n```\n{menuexit}')
                                     break
                                 elif autovcwait.content != '1' or autovcwait.content.lower() != 'yes' or autovcwait.content.lower() != '2' or autovcwait.content.lower() != 'no':
                                     await ctx.send('Please choose one of the corresponding numbers!')
@@ -389,7 +398,7 @@ class Settings(commands.Cog):
                             return
                         if outautowait.content.lower() == 'exit':
                             await outmenu.delete()
-                            await ctx.send('Menu has been exited.')
+                            await ctx.send(menuexit)
                             return
                         elif outautowait.content.lower() != 'exit':
                             await ctx.send('Please choose one of the corresponding numbers!')
