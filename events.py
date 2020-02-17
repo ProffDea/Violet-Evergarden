@@ -12,8 +12,6 @@ class Events(commands.Cog):
         with open('guilds.json', 'r') as f:
             cstmguild = json.load(f)
         await guild_data(cstmguild, guild.owner)
-        if not str(guild.id) in cstmguild:
-            cstmguild[str(guild.id)] = {}
         with open('guilds.json', 'w') as f:
             json.dump(cstmguild, f, indent=4)
 
@@ -21,7 +19,6 @@ class Events(commands.Cog):
     async def on_guild_remove(self, guild):
         with open('guilds.json', 'r') as f:
             cstmguild = json.load(f)
-        await guild_data(cstmguild, guild.owner)
         for removeguild in list(cstmguild):
             if self.bot.get_guild(int(removeguild)) == None:
                 del cstmguild[removeguild]
@@ -70,17 +67,6 @@ class Events(commands.Cog):
                 cstmguild[str(message.guild.id)]['VC']['AutoVC'][automsg]['Message'] = False
             with open('guilds.json', 'w') as f:
                 json.dump(cstmguild, f, indent=4)
-
-    @commands.Cog.listener()
-    async def on_typing(self, channel, user, when):
-        try:
-            with open('guilds.json', 'r') as f:
-                cstmguild = json.load(f)
-            await guild_data(cstmguild, user)
-            with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
-        except AttributeError:
-            return
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
