@@ -39,6 +39,8 @@ class Events(commands.Cog):
             await ctx.send("Missing required argument!")
         elif isinstance(error, commands.NotOwner):
             return
+        elif isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(error)
         elif hasattr(ctx.command, 'on_error'):
             return
         else:

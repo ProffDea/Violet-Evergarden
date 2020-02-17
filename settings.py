@@ -67,6 +67,7 @@ class Settings(commands.Cog):
 
 
     @commands.command(name='Vc', help="Allows the use of personal voice channels.\n'v.Vc' while not in a voice channel will bring up the 'User Menu'.\n'v.Vc' while in a normal voice channel will bring up the 'Main Menu'.\n'v.Vc' while in a personal voice channel will bring up the 'Voice Channel Setting Menu'.\n'v.Vc [argument]' while in a personal voice channel will bring up the 'Member Menu'.") # False = empty | True = not empty
+    @commands.cooldown(1, 5, commands.BucketType.user)
     @commands.guild_only()
     async def vc(self, ctx, *menu):
         try:
@@ -74,6 +75,7 @@ class Settings(commands.Cog):
                 cstmguild = json.load(f)
             try:
                 menuexit = 'Menu has been exited.'
+                menutimeout = 'Menu has been exited due to timeout.'
                 chl = ctx.channel
                 aut = ctx.author
                 if bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == False: # Checks if there is a main automated voice channel or not | True = runs if not empty | False = runs if empty
@@ -103,7 +105,7 @@ class Settings(commands.Cog):
                                     await ctx.send('Please choose one of the corresponding numbers!')
                                     continue
                         except asyncio.TimeoutError:
-                            await ctx.send('Menu has been exited due to timeout.')
+                            await ctx.send(menutimeout)
                             return
                     else:
                         await ctx.send(f"`Manage Channel` permissions required to access automated voice channel menu for '{ctx.author.voice.channel.name}'!")
@@ -202,7 +204,7 @@ class Settings(commands.Cog):
                                                     await ctx.send('Please choose one of the corresponding numbers!')
                                                     continue
                                         except asyncio.TimeoutError:
-                                            await ctx.send('Menu has been exited due to timeout.')
+                                            await ctx.send(menutimeout)
                                             return
                                     else:
                                         if cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]["Static"] == False:
@@ -318,10 +320,10 @@ class Settings(commands.Cog):
                                                         await ctx.send('Please choose one of the corresponding numbers!')
                                                         continue
                                             except asyncio.TimeoutError:
-                                                await ctx.send('Menu has been exited due to timeout.')
+                                                await ctx.send(menutimeout)
                                                 return
                                 elif ownertemp.id != ctx.author.id:
-                                    if not ownertemp in ctx.author.voice.channel.members:
+                                    if not ownertemp in ctx.author.voice.channel.members and cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]['Static'] == False:
                                         cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][ctx.author.id] = cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]
                                         del cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]
                                         await ctx.send(f"**{ctx.author.name}** is the new owner of '{ctx.author.voice.channel.name}'!\nOld owner was **{ownertemp.name}**.")
@@ -329,7 +331,7 @@ class Settings(commands.Cog):
                                             json.dump(cstmguild, f, indent=4)
                                         return
                                     else:
-                                        await ctx.send(f"**{ownertemp.name}** is the owner of '{temp.name}', __NOT__ **{ctx.author.name}**!")
+                                        await ctx.send(f"**{ownertemp.name}** is the owner of '{temp.name}', __NOT__ **{ctx.author.name}**!\nCan not claim ownership unless owner is not in voice channel and it's not set to permanent.")
                                         return
                     if ctx.author.voice.channel.permissions_for(ctx.author).manage_channels == True:
                         mainvc = ''
@@ -369,7 +371,7 @@ class Settings(commands.Cog):
                                     await ctx.send('Please choose one of the corresponding numbers!')
                                     continue
                         except asyncio.TimeoutError:
-                            await ctx.send('Menu has been exited due to timeout.')
+                            await ctx.send(menutimeout)
                             return
                     else:
                         await ctx.send(f"`Manage Channel` permissions required to access automated voice channel menu for '{ctx.author.voice.channel.name}'!")
@@ -404,7 +406,7 @@ class Settings(commands.Cog):
                             await ctx.send('Please choose one of the corresponding numbers!')
                             continue
                 except asyncio.TimeoutError:
-                    await ctx.send('Menu has been exited due to timeout.')
+                    await ctx.send(menutimeout)
                     return
         except discord.Forbidden:
             try:
