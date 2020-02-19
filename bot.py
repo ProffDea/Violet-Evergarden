@@ -66,6 +66,10 @@ async def on_ready():
             cstmguild[str(inguilds.id)]['VC']['VCList'] = {}
         if not 'Custom Prefix' in cstmguild[str(inguilds.id)]:
             cstmguild[str(inguilds.id)]['Custom Prefix'] = 'v.'
+        if not 'Welcome' in cstmguild[str(inguilds.id)]:
+            cstmguild[str(inguilds.id)]['Welcome'] = {}
+        if not 'Goodbye' in cstmguild[str(inguilds.id)]:
+            cstmguild[str(inguilds.id)]['Goodbye'] = {}
     for removeguild in list(cstmguild):
         if bot.get_guild(int(removeguild)) == None and bot.get_guild(int(removeguild)) != TestServerID: # The ID prevents from deleting specific guild
             del cstmguild[removeguild]

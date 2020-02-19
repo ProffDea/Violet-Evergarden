@@ -26,6 +26,24 @@ class Events(commands.Cog):
             json.dump(cstmguild, f, indent=4)
 
     @commands.Cog.listener()
+    async def on_member_join(self, member):
+        with open('guilds.json', 'r') as f:
+            cstmguild = json.load(f)
+        if bool(cstmguild[str(member.guild.id)]['Welcome']) == True:
+            for welcomechl in cstmguild[str(member.guild.id)]['Welcome']:
+                sendchl = self.bot.get_channel(int(welcomechl))
+                await sendchl.send(cstmguild[str(member.guild.id)]['Welcome'][welcomechl].format(member.mention))
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        with open('guilds.json', 'r') as f:
+            cstmguild = json.load(f)
+        if bool(cstmguild[str(member.guild.id)]['Goodbye']) == True:
+            for goodbyechl in cstmguild[str(member.guild.id)]['Goodbye']:
+                sendchl = self.bot.get_channel(int(goodbyechl))
+                await sendchl.send(cstmguild[str(member.guild.id)]['Goodbye'][goodbyechl].format(str(member)))
+
+    @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(TestServerEmoji)
@@ -38,7 +56,7 @@ class Events(commands.Cog):
             return
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(error)
-        elif hasattr(ctx.command, 'on_error'):
+        if hasattr(ctx.command, 'on_error'):
             return
         else:
             raise error
@@ -117,6 +135,10 @@ async def guild_data(cstmguild, user):
         cstmguild[str(user.guild.id)]['VC']['VCList'] = {}
     if not 'Custom Prefix' in cstmguild[str(user.guild.id)]:
         cstmguild[str(user.guild.id)]['Custom Prefix'] = 'v.'
+    if not 'Welcome' in cstmguild[str(user.guild.id)]:
+        cstmguild[str(user.guild.id)]['Welcome'] = {}
+    if not 'Goodbye' in cstmguild[str(user.guild.id)]:
+        cstmguild[str(user.guild.id)]['Goodbye'] = {}
 
 def setup(bot):
     bot.add_cog(Events(bot))
