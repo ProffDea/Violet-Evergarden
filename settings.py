@@ -493,8 +493,43 @@ class Settings(commands.Cog):
                             await ctx.send('Please enter a valid channel!')
                             continue
                 elif firstwait.content == '2':
-                    await ctx.send('work in progress')
-                    return
+                    await firstmenu.delete()
+                    firstcount = 0
+                    def welcomemsg_menu(m):
+                        return m.content and m.channel == chl and m.author == aut
+                    welcomemsgcount = 0
+                    while True:
+                        welcomemsgcount = welcomemsgcount + 1
+                        if welcomemsgcount == 1:
+                            for welcomelist in cstmguild[str(ctx.guild.id)]['Welcome']:
+                                getwelcome = self.bot.get_channel(int(welcomelist))
+                            welcomemsgmenu = await ctx.send(f"```\nPlease enter a message to be the welcome message for the '{getwelcome.name}' channel.\n\nType 'embed' to make your welcome message an embed.\nType 'reset' to reset the welcome message.\nType 'back' to go back.\nType 'exit' to cancel settings.\n```\nCurrent welcome message:\n{cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist]}")
+                        welcomemsgwait = await self.bot.wait_for('message', timeout=300, check=welcomemsg_menu)
+                        if welcomemsgwait.content.lower() == 'embed':
+                            await welcomemsgmenu.delete()
+                            await ctx.send('work in progress')
+                            return
+                        elif welcomemsgwait.content.lower() == 'reset':
+                            await welcomemsgmenu.delete()
+                            cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist] = "Welcome {}!"
+                            await ctx.send(f"```\nWelcome message has been set back to default:\n```\n{cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist]}\n\n{menuexit}")
+                            with open('guilds.json', 'w') as f:
+                                json.dump(cstmguild, f, indent=4)
+                            return
+                        elif welcomemsgwait.content.lower() == 'back':
+                            await welcomemsgmenu.delete()
+                            break
+                        elif welcomemsgwait.content.lower() == 'exit':
+                            await welcomemsgmenu.delete()
+                            await ctx.send(menuexit)
+                            return
+                        elif welcomemsgwait.content.lower() != 'reset' or welcomemsgwait.content.lower() != 'back' or welcomemsgwait.content.lower() != 'exit':
+                            await welcomemsgmenu.delete()
+                            await ctx.send(f"```\nWelcome message set!\n```\n{welcomemsgwait.content}\n\n{menuexit}")
+                            cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist] = welcomemsgwait.content
+                            with open('guilds.json', 'w') as f:
+                                json.dump(cstmguild, f, indent=4)
+                            return
                 elif firstwait.content == '3':
                     await firstmenu.delete()
                     firstcount = 0

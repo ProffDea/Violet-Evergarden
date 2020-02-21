@@ -105,24 +105,17 @@ class Events(commands.Cog):
                     json.dump(cstmguild, f, indent=4)
         for dellist in list(cstmguild[str(member.guild.id)]['VC']['VCList']):
             vclist = self.bot.get_channel(int(dellist))
-            for delmember in list(cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]):
-                #ownerid = member.guild.get_member(int(delmember))
-                cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] = len(vclist.members)
-                if cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] == 0 and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Static'] == False:
-                    if before.channel == vclist:
-                        await before.channel.delete(reason='VC is empty.')
-                    elif after.channel == vclist:
-                        await after.channel.delete(reason='VC is empty.')
-                    del cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]
-                with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
-                #for msgctx in cstmguild[str(member.guild.id)]['VC']['AutoVC']:
-                #    if after.channel == vclist and member.id == ownerid.id and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['AutoMenu'] == True and cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'] != False:
-                #        ctxchl = self.bot.get_channel(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Channel']))
-                #        getcmd = self.bot.get_command('vc')
-                #        getmsgctx = await ctxchl.fetch_message(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'])) # Only applies to the one that ran the command | Fix this
-                #        ctxmsg = await self.bot.get_context(getmsgctx)
-                #        await ctxmsg.invoke(getcmd)
+            if before.channel == vclist or after.channel == vclist:
+                for delmember in list(cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]):
+                    cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] = len(vclist.members)
+                    if cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] == 0 and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Static'] == False:
+                        if before.channel == vclist:
+                            await before.channel.delete(reason='VC is empty.')
+                        elif after.channel == vclist:
+                            await after.channel.delete(reason='VC is empty.')
+                        del cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]
+                    with open('guilds.json', 'w') as f:
+                        json.dump(cstmguild, f, indent=4)
 
 async def guild_data(cstmguild, user):
     if not str(user.guild.id) in cstmguild:
