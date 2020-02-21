@@ -12,8 +12,6 @@ class Events(commands.Cog):
         with open('guilds.json', 'r') as f:
             cstmguild = json.load(f)
         await guild_data(cstmguild, guild.owner)
-        if not str(guild.id) in cstmguild:
-            cstmguild[str(guild.id)] = {}
         with open('guilds.json', 'w') as f:
             json.dump(cstmguild, f, indent=4)
 
@@ -21,12 +19,29 @@ class Events(commands.Cog):
     async def on_guild_remove(self, guild):
         with open('guilds.json', 'r') as f:
             cstmguild = json.load(f)
-        await guild_data(cstmguild, guild.owner)
         for removeguild in list(cstmguild):
             if self.bot.get_guild(int(removeguild)) == None:
                 del cstmguild[removeguild]
         with open('guilds.json', 'w') as f:
             json.dump(cstmguild, f, indent=4)
+
+    @commands.Cog.listener()
+    async def on_member_join(self, member):
+        with open('guilds.json', 'r') as f:
+            cstmguild = json.load(f)
+        if bool(cstmguild[str(member.guild.id)]['Welcome']) == True:
+            for welcomechl in cstmguild[str(member.guild.id)]['Welcome']:
+                sendchl = self.bot.get_channel(int(welcomechl))
+                await sendchl.send(cstmguild[str(member.guild.id)]['Welcome'][welcomechl].format(member.mention))
+
+    @commands.Cog.listener()
+    async def on_member_remove(self, member):
+        with open('guilds.json', 'r') as f:
+            cstmguild = json.load(f)
+        if bool(cstmguild[str(member.guild.id)]['Goodbye']) == True:
+            for goodbyechl in cstmguild[str(member.guild.id)]['Goodbye']:
+                sendchl = self.bot.get_channel(int(goodbyechl))
+                await sendchl.send(cstmguild[str(member.guild.id)]['Goodbye'][goodbyechl].format(str(member)))
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -41,7 +56,7 @@ class Events(commands.Cog):
             return
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(error)
-        elif hasattr(ctx.command, 'on_error'):
+        if hasattr(ctx.command, 'on_error'):
             return
         else:
             raise error
@@ -72,17 +87,6 @@ class Events(commands.Cog):
                 json.dump(cstmguild, f, indent=4)
 
     @commands.Cog.listener()
-    async def on_typing(self, channel, user, when):
-        try:
-            with open('guilds.json', 'r') as f:
-                cstmguild = json.load(f)
-            await guild_data(cstmguild, user)
-            with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
-        except AttributeError:
-            return
-
-    @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         with open('guilds.json', 'r') as f:
             cstmguild = json.load(f)
@@ -101,24 +105,17 @@ class Events(commands.Cog):
                     json.dump(cstmguild, f, indent=4)
         for dellist in list(cstmguild[str(member.guild.id)]['VC']['VCList']):
             vclist = self.bot.get_channel(int(dellist))
-            for delmember in list(cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]):
-                #ownerid = member.guild.get_member(int(delmember))
-                cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] = len(vclist.members)
-                if cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] == 0 and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Static'] == False:
-                    if before.channel == vclist:
-                        await before.channel.delete(reason='VC is empty.')
-                    elif after.channel == vclist:
-                        await after.channel.delete(reason='VC is empty.')
-                    del cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]
-                with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
-                #for msgctx in cstmguild[str(member.guild.id)]['VC']['AutoVC']:
-                #    if after.channel == vclist and member.id == ownerid.id and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['AutoMenu'] == True and cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'] != False:
-                #        ctxchl = self.bot.get_channel(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Channel']))
-                #        getcmd = self.bot.get_command('vc')
-                #        getmsgctx = await ctxchl.fetch_message(int(cstmguild[str(member.guild.id)]['VC']['AutoVC'][msgctx]['Message'])) # Only applies to the one that ran the command | Fix this
-                #        ctxmsg = await self.bot.get_context(getmsgctx)
-                #        await ctxmsg.invoke(getcmd)
+            if before.channel == vclist or after.channel == vclist:
+                for delmember in list(cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]):
+                    cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] = len(vclist.members)
+                    if cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Members'] == 0 and cstmguild[str(member.guild.id)]['VC']['VCList'][dellist][delmember]['Static'] == False:
+                        if before.channel == vclist:
+                            await before.channel.delete(reason='VC is empty.')
+                        elif after.channel == vclist:
+                            await after.channel.delete(reason='VC is empty.')
+                        del cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]
+                    with open('guilds.json', 'w') as f:
+                        json.dump(cstmguild, f, indent=4)
 
 async def guild_data(cstmguild, user):
     if not str(user.guild.id) in cstmguild:
@@ -131,6 +128,10 @@ async def guild_data(cstmguild, user):
         cstmguild[str(user.guild.id)]['VC']['VCList'] = {}
     if not 'Custom Prefix' in cstmguild[str(user.guild.id)]:
         cstmguild[str(user.guild.id)]['Custom Prefix'] = 'v.'
+    if not 'Welcome' in cstmguild[str(user.guild.id)]:
+        cstmguild[str(user.guild.id)]['Welcome'] = {}
+    if not 'Goodbye' in cstmguild[str(user.guild.id)]:
+        cstmguild[str(user.guild.id)]['Goodbye'] = {}
 
 def setup(bot):
     bot.add_cog(Events(bot))

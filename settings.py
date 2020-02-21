@@ -5,6 +5,8 @@ from discord.ext import commands
 
 TestServerID = 648977487744991233 # ID is the test server ID. Feel free to change it
 MissingPerm = "Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
+menuexit = 'Menu has been exited.'
+menutimeout = 'Menu has been exited due to timeout.'
 
 class Settings(commands.Cog):
     def __init__(self, bot):
@@ -66,7 +68,7 @@ class Settings(commands.Cog):
             await ctx.send(f"Character limit is 128. You reached {len(changestatus)} characters.")
 
 
-    @commands.command(name='Vc', help="Allows the use of personal voice channels.\n'v.Vc' while not in a voice channel will bring up the 'User Menu'.\n'v.Vc' while in a normal voice channel will bring up the 'Main Menu'.\n'v.Vc' while in a personal voice channel will bring up the 'Voice Channel Setting Menu'.\n'v.Vc [argument]' while in a personal voice channel will bring up the 'Member Menu'.") # False = empty | True = not empty
+    @commands.command(name='Vc', help="Allows the use of personal voice channels.\n'Vc' while not in a voice channel will bring up the 'User Menu'.\n'Vc' while in a normal voice channel will bring up the 'Main Menu'.\n'Vc' while in a personal voice channel will bring up the 'Voice Channel Setting Menu'.\n'Vc [argument]' while in a personal voice channel will bring up the 'Member Menu'.") # False = empty | True = not empty
     @commands.cooldown(1, 5, commands.BucketType.user)
     @commands.guild_only()
     async def vc(self, ctx, *menu):
@@ -74,8 +76,6 @@ class Settings(commands.Cog):
             with open('guilds.json', 'r') as f:
                 cstmguild = json.load(f)
             try:
-                menuexit = 'Menu has been exited.'
-                menutimeout = 'Menu has been exited due to timeout.'
                 chl = ctx.channel
                 aut = ctx.author
                 if bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == False: # Checks if there is a main automated voice channel or not | True = runs if not empty | False = runs if empty
@@ -151,7 +151,7 @@ class Settings(commands.Cog):
                                                         addmore = "\nWhat would you like to do with everyone in the list?\n\n"
                                                     listmenu = await ctx.send(f"```{notlist}{membermsg}{addmore}1.) Add more members to the list\n\nPlease enter one of the corresponding numbers.\nType 'exit' to cancel settings.\n```")
                                                 listcheck = await self.bot.wait_for('message', timeout=120, check=setmember)
-                                                if listcheck.content == '1' or listcheck.content.lower() == 'add':
+                                                if listcheck.content == '1' or 'add' in listcheck.content.lower():
                                                     await listmenu.delete()
                                                     addmenu = 0
                                                     def addcheck(m):
@@ -200,7 +200,7 @@ class Settings(commands.Cog):
                                                     await listmenu.delete()
                                                     await ctx.send(menuexit)
                                                     return
-                                                elif listcheck.content != '1' or listcheck.content.lower() != 'add' or listcheck.content.lower() != 'exit':
+                                                elif listcheck.content != '1' or not 'add' in listcheck.content.lower() or listcheck.content.lower() != 'exit':
                                                     await ctx.send('Please choose one of the corresponding numbers!')
                                                     continue
                                         except asyncio.TimeoutError:
@@ -413,6 +413,188 @@ class Settings(commands.Cog):
                 await ctx.send(MissingPerm)
             except:
                 return
+
+    @commands.command(name='Wg', help="User interface for setting up welcome and goodbye messages for users.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.has_permissions(manage_channels=True)
+    @commands.guild_only()
+    async def wg(self, ctx):
+        with open('guilds.json', 'r') as f:
+            cstmguild = json.load(f)
+        chl = ctx.channel
+        aut = ctx.author
+        def first_menu(m):
+            return m.content and m.channel == chl and m.author == aut
+        try:
+            firstcount = 0
+            while True:
+                firstcount = firstcount + 1
+                if firstcount == 1:
+                    if bool(cstmguild[str(ctx.guild.id)]['Welcome']) == True:
+                        for welcomequickchl in cstmguild[str(ctx.guild.id)]['Welcome']:
+                            welcomegrabchl = self.bot.get_channel(int(welcomequickchl))
+                        welcomechlname = welcomegrabchl.name
+                    else:
+                        welcomechlname = 'None'
+                    if bool(cstmguild[str(ctx.guild.id)]['Goodbye']) == True:
+                        for goodbyequickchl in cstmguild[str(ctx.guild.id)]['Goodbye']:
+                            goodbyegrabchl = self.bot.get_channel(int(goodbyequickchl))
+                        goodbyechlname = goodbyegrabchl.name
+                    else:
+                        goodbyechlname = 'None'
+                    firstmenu = await ctx.send(f"```\nThe Welcome and Goodbye Annoucement Settings\n\n1.) Welcome Channel - Current: {welcomechlname} \n2.) Welcome Message\n3.) Goodbye Channel - Current: {goodbyechlname}\n4.) Goodbye Message\n\nPlease choose one of the corresponding numbers!\nType 'exit' to cancel settings.\n```")
+                firstwait = await self.bot.wait_for('message', timeout=120, check=first_menu)
+                if firstwait.content == '1':
+                    await firstmenu.delete()
+                    firstcount = 0
+                    def welcome_menu(m):
+                        return m.content and m.channel == chl and m.author == aut
+                    welcomecount = 0
+                    if bool(cstmguild[str(ctx.guild.id)]['Welcome']) == True:
+                        removeoption = "Type 'remove' to get rid of welcome channel.\n"
+                    else:
+                        removeoption = ""
+                    while True:
+                        welcomecount = welcomecount + 1
+                        if welcomecount == 1:
+                            welcomemenu = await ctx.send(f"```\nPlease enter a valid channel either by mention, ID, etc. that you wish to be the welcome channel\n\n{removeoption}Type 'back' to go back.\nType 'exit' to cancel settings.\n```")
+                        welcomewait = await self.bot.wait_for('message', timeout=120, check=welcome_menu)
+                        for allchannel in ctx.guild.channels:
+                            if welcomewait.content == allchannel.mention or welcomewait.content == str(allchannel.id) or welcomewait.content == allchannel.name:
+                                await welcomemenu.delete()
+                                await ctx.send(f"```\n'{allchannel.name}' has been set as the welcome channel!\nDon't forget to set a welcome message.\n```\n{menuexit}")
+                                if bool(cstmguild[str(ctx.guild.id)]['Welcome']) == False:
+                                    cstmguild[str(ctx.guild.id)]['Welcome'][allchannel.id] = "Welcome {}!"
+                                else:
+                                    for replacechl in list(cstmguild[str(ctx.guild.id)]['Welcome']):
+                                        cstmguild[str(ctx.guild.id)]['Welcome'][allchannel.id] = cstmguild[str(ctx.guild.id)]['Welcome'][replacechl]
+                                        del cstmguild[str(ctx.guild.id)]['Welcome'][replacechl]
+                                with open('guilds.json', 'w') as f:
+                                    json.dump(cstmguild, f, indent=4)
+                                return
+                        if welcomewait.content == 'remove':
+                            if bool(cstmguild[str(ctx.guild.id)]['Welcome']) == True:
+                                await welcomemenu.delete()
+                                for welcomedelchl in list(cstmguild[str(ctx.guild.id)]['Welcome']):
+                                    welcomedelname = self.bot.get_channel(int(welcomedelchl))
+                                    await ctx.send(f"```\n'{welcomedelname.name}' will no longer receive welcome messages!\n```\n{menuexit}")
+                                    del cstmguild[str(ctx.guild.id)]['Welcome'][welcomedelchl]
+                                with open('guilds.json', 'w') as f:
+                                    json.dump(cstmguild, f, indent=4)
+                                return
+                        elif welcomewait.content == 'back':
+                            await welcomemenu.delete()
+                            break
+                        elif welcomewait.content == 'exit':
+                            await welcomemenu.delete()
+                            await ctx.send(menuexit)
+                            return
+                        if firstwait.content == 'remove' and bool(cstmguild[str(ctx.guild.id)]['Welcome']) == False or welcomewait.content != allchannel.mention or welcomewait.content != str(allchannel.id) or welcomewait.content != allchannel.name or welcomewait.content != 'back' or welcomewait.content != 'exit':
+                            await ctx.send('Please enter a valid channel!')
+                            continue
+                elif firstwait.content == '2':
+                    await firstmenu.delete()
+                    firstcount = 0
+                    def welcomemsg_menu(m):
+                        return m.content and m.channel == chl and m.author == aut
+                    welcomemsgcount = 0
+                    while True:
+                        welcomemsgcount = welcomemsgcount + 1
+                        if welcomemsgcount == 1:
+                            for welcomelist in cstmguild[str(ctx.guild.id)]['Welcome']:
+                                getwelcome = self.bot.get_channel(int(welcomelist))
+                            welcomemsgmenu = await ctx.send(f"```\nPlease enter a message to be the welcome message for the '{getwelcome.name}' channel.\n\nType 'embed' to make your welcome message an embed.\nType 'reset' to reset the welcome message.\nType 'back' to go back.\nType 'exit' to cancel settings.\n```\nCurrent welcome message:\n{cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist]}")
+                        welcomemsgwait = await self.bot.wait_for('message', timeout=300, check=welcomemsg_menu)
+                        if welcomemsgwait.content.lower() == 'embed':
+                            await welcomemsgmenu.delete()
+                            await ctx.send('work in progress')
+                            return
+                        elif welcomemsgwait.content.lower() == 'reset':
+                            await welcomemsgmenu.delete()
+                            cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist] = "Welcome {}!"
+                            await ctx.send(f"```\nWelcome message has been set back to default:\n```\n{cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist]}\n\n{menuexit}")
+                            with open('guilds.json', 'w') as f:
+                                json.dump(cstmguild, f, indent=4)
+                            return
+                        elif welcomemsgwait.content.lower() == 'back':
+                            await welcomemsgmenu.delete()
+                            break
+                        elif welcomemsgwait.content.lower() == 'exit':
+                            await welcomemsgmenu.delete()
+                            await ctx.send(menuexit)
+                            return
+                        elif welcomemsgwait.content.lower() != 'reset' or welcomemsgwait.content.lower() != 'back' or welcomemsgwait.content.lower() != 'exit':
+                            await welcomemsgmenu.delete()
+                            await ctx.send(f"```\nWelcome message set!\n```\n{welcomemsgwait.content}\n\n{menuexit}")
+                            cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist] = welcomemsgwait.content
+                            with open('guilds.json', 'w') as f:
+                                json.dump(cstmguild, f, indent=4)
+                            return
+                elif firstwait.content == '3':
+                    await firstmenu.delete()
+                    firstcount = 0
+                    def goodbye_menu(m):
+                        return m.content and m.channel == chl and m.author == aut
+                    goodbyecount = 0
+                    if bool(cstmguild[str(ctx.guild.id)]['Goodbye']) == True:
+                        removeoption = "Type 'remove' to get rid of goodbye channel.\n"
+                    else:
+                        removeoption = ""
+                    while True:
+                        goodbyecount = goodbyecount + 1
+                        if goodbyecount == 1:
+                            goodbyemenu = await ctx.send(f"```\nPlease enter a valid channel either by mention, ID, etc. that you wish to be the goodbye channel\n\n{removeoption}Type 'back' to go back.\nType 'exit' to cancel settings.\n```")
+                        goodbyewait = await self.bot.wait_for('message', timeout=120, check=goodbye_menu)
+                        for allchannel in ctx.guild.channels:
+                            if goodbyewait.content == allchannel.mention or goodbyewait.content == str(allchannel.id) or goodbyewait.content == allchannel.name:
+                                await goodbyemenu.delete()
+                                await ctx.send(f"```\n'{allchannel.name}' has been set as the goodbye channel!\nDon't forget to set a goodbye message.\n```\n{menuexit}")
+                                if bool(cstmguild[str(ctx.guild.id)]['Goodbye']) == False:
+                                    cstmguild[str(ctx.guild.id)]['Goodbye'][allchannel.id] = "Goodbye **{}**!"
+                                else:
+                                    for replacechl in list(cstmguild[str(ctx.guild.id)]['Goodbye']):
+                                        cstmguild[str(ctx.guild.id)]['Goodbye'][allchannel.id] = cstmguild[str(ctx.guild.id)]['Goodbye'][replacechl]
+                                        del cstmguild[str(ctx.guild.id)]['Goodbye'][replacechl]
+                                with open('guilds.json', 'w') as f:
+                                    json.dump(cstmguild, f, indent=4)
+                                return
+                        if goodbyewait.content == 'remove':
+                            if bool(cstmguild[str(ctx.guild.id)]['Goodbye']) == True:
+                                await goodbyemenu.delete()
+                                for goodbyedelchl in list(cstmguild[str(ctx.guild.id)]['Goodbye']):
+                                    goodbyedelname = self.bot.get_channel(int(goodbyedelchl))
+                                    await ctx.send(f"```\n'{goodbyedelname.name}' will no longer receive goodbye messages!\n```\n{menuexit}")
+                                    del cstmguild[str(ctx.guild.id)]['Goodbye'][goodbyedelchl]
+                                with open('guilds.json', 'w') as f:
+                                    json.dump(cstmguild, f, indent=4)
+                                return
+                        elif goodbyewait.content == 'back':
+                            await goodbyemenu.delete()
+                            break
+                        elif goodbyewait.content == 'exit':
+                            await goodbyemenu.delete()
+                            await ctx.send(menuexit)
+                            return
+                        if goodbyewait.content != allchannel.mention or goodbyewait.content != str(allchannel.id) or goodbyewait.content != allchannel.name or goodbyewait.content != 'back' or goodbyewait.content != 'exit':
+                            await ctx.send('Please enter a valid channel!')
+                            continue
+                elif firstwait.content == '4':
+                    await ctx.send('work in progress')
+                    return
+                elif firstwait.content == 'exit':
+                    await firstmenu.delete()
+                    await ctx.send(menuexit)
+                    return
+                elif firstwait.content == 'remove' and bool(cstmguild[str(ctx.guild.id)]['Goodbye']) == False or firstwait.content != '1' or firstwait.content != '2' or firstwait.content != '3' or firstwait.content != '4':
+                    await ctx.send('Please choose one of the corresponding numbers!')
+                    continue
+        except asyncio.TimeoutError:
+            await ctx.send(menutimeout)
+            return
+    @wg.error
+    async def wg_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            await ctx.send("This command requires the user to have `Manage Channel` permissions to use.")
 
 def setup(bot):
     bot.add_cog(Settings(bot))

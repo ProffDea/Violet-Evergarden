@@ -55,15 +55,22 @@ async def on_ready():
     else:
         statusmsg = cstmstatus
     print(f'\n{bot.user.name} is online.\nConnected to {len(bot.guilds)} {sver}!\n\nStatus:\n{statusmsg}')
+    for inguilds in bot.guilds:
+        if not str(inguilds.id) in cstmguild:
+            cstmguild[str(inguilds.id)] = {}
+        if not 'VC' in cstmguild[str(inguilds.id)]:
+            cstmguild[str(inguilds.id)]['VC'] = {}
+        if not 'AutoVC' in cstmguild[str(inguilds.id)]['VC']:
+            cstmguild[str(inguilds.id)]['VC']['AutoVC'] = {}
+        if not 'VCList' in cstmguild[str(inguilds.id)]['VC']:
+            cstmguild[str(inguilds.id)]['VC']['VCList'] = {}
+        if not 'Custom Prefix' in cstmguild[str(inguilds.id)]:
+            cstmguild[str(inguilds.id)]['Custom Prefix'] = 'v.'
+        if not 'Welcome' in cstmguild[str(inguilds.id)]:
+            cstmguild[str(inguilds.id)]['Welcome'] = {}
+        if not 'Goodbye' in cstmguild[str(inguilds.id)]:
+            cstmguild[str(inguilds.id)]['Goodbye'] = {}
     for removeguild in list(cstmguild):
-        if not 'VC' in cstmguild[str(removeguild)]:
-            cstmguild[str(removeguild)]['VC'] = {}
-        if not 'AutoVC' in cstmguild[str(removeguild)]['VC']:
-            cstmguild[str(removeguild)]['VC']['AutoVC'] = {}
-        if not 'VCList' in cstmguild[str(removeguild)]['VC']:
-            cstmguild[str(removeguild)]['VC']['VCList'] = {}
-        if not 'Custom Prefix' in cstmguild[str(removeguild)]:
-            cstmguild[str(removeguild)]['Custom Prefix'] = 'v.'
         if bot.get_guild(int(removeguild)) == None and bot.get_guild(int(removeguild)) != TestServerID: # The ID prevents from deleting specific guild
             del cstmguild[removeguild]
             continue
