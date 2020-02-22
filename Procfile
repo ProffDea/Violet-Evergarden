@@ -1,1 +1,1 @@
-web: gunicorn violetevergarden.wsgi
+worker: python bot.py
