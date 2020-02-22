@@ -1,7 +1,7 @@
 import discord
 import os
 import os.path
-import json
+import json, sys
 from dotenv import load_dotenv
 from discord.ext import commands
 
@@ -29,7 +29,7 @@ def cstmprefix(bot, msg):
 helpmsg = "Please make sure I have all the necessary permissions to properly work!\nPermissions such as:\nManage Channels, Read Text Channels & See Voice Channels, Send Messages, Manage Messages, Use External Emojis, Connect, Move Members"
 bot = commands.Bot(command_prefix=cstmprefix, description=helpmsg, case_insensitive=True)
 
-initial_extensions = ['commands', 'settings', 'events'] # Where you put python file names when making new cogs
+initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
 if __name__ == '__main__':
     for extends in initial_extensions:
         try:
