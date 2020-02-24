@@ -1,11 +1,15 @@
 import discord
 import os
 import os.path
-import json, sys
+import json
+import psycopg2
 from dotenv import load_dotenv
 from discord.ext import commands
 
 TestServerID = 648977487744991233 # ID is the test server ID. Feel free to change it
+
+DATABASE_URL = os.environ['DATABASE_URL']
+conn = psycopg2.connect(DATABASE_URL, sslmode='require')
 
 if not os.path.isfile('guilds.json'): # JSON file stores all data required for this to work
     with open('guilds.json', 'w') as f:
