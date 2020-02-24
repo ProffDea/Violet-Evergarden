@@ -1,4 +1,5 @@
 import discord
+import json
 from discord.ext import commands
 
 MissingPerm = "Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
@@ -94,7 +95,9 @@ class Commands(commands.Cog):
     @commands.is_owner()
     async def tst(self, ctx):
         try:
-            await ctx.send('owo')
+            with open('guilds.json', 'r') as f:
+                cstmguild = json.load(f)
+            await ctx.send(cstmguild)
         except discord.Forbidden:
             return
 
