@@ -8,8 +8,14 @@ from discord.ext import commands
 
 TestServerID = 648977487744991233 # ID is the test server ID. Feel free to change it
 
-DATABASE_URL = os.environ['DATABASE_URL']
-conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+# Connects to heroku
+try:
+    DATABASE_URL = os.environ['DATABASE_URL']
+    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+    herokumsg = "Connected to heroku postgresql!"
+except KeyError:
+    herokumsg = "Not connected to heroku postgresql."
+    pass
 
 if not os.path.isfile('guilds.json'): # JSON file stores all data required for this to work
     with open('guilds.json', 'w') as f:
@@ -58,7 +64,7 @@ async def on_ready():
         statusmsg = 'No status'
     else:
         statusmsg = cstmstatus
-    print(f'\n{bot.user.name} is online.\nConnected to {len(bot.guilds)} {sver}!\n\nStatus:\n{statusmsg}')
+    print(f'\n{bot.user.name} is online.\nConnected to {len(bot.guilds)} {sver}!\n\nStatus:\n{statusmsg}\n\n{herokumsg}')
     for inguilds in bot.guilds:
         if not str(inguilds.id) in cstmguild:
             cstmguild[str(inguilds.id)] = {}
