@@ -46,7 +46,7 @@ try:
     conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     cur = conn.cursor()
     cur.execute("CREATE TABLE guilds (ID serial NOT NULL PRIMARY KEY, GuildJSON json NOT NULL);")
-    cur.execute(f"INSERT INTO guilds (GuildJSON) VALUES ({cstmguild});")
+    cur.execute(f"INSERT INTO guilds (GuildJSON) VALUES ('{cstmguild}');")
     cur.execute("SELECT GuildJSON FROM guilds;")
     conn.commit()
     cur.close()
