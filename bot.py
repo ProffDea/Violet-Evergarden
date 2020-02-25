@@ -38,24 +38,6 @@ if __name__ == '__main__':
         except Exception as error:
             print(f'{extends} cannot be loaded. [{error}]')
 
-# Connects to heroku
-try:
-    with open('guilds.json', 'r') as f:
-        cstmguild = json.load(f)
-    DATABASE_URL = os.environ['DATABASE_URL']
-    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-    cur = conn.cursor()
-    cur.execute("CREATE TABLE guilds (ID serial NOT NULL PRIMARY KEY, GuildJSON json NOT NULL);")
-    #cur.execute(f"INSERT INTO guilds (GuildJSON) VALUES ('{cstmguild}');")
-    #cur.execute("SELECT GuildJSON FROM guilds;")
-    conn.commit()
-    cur.close()
-    conn.close()
-    herokumsg = "Connected to heroku postgresql!"
-except KeyError:
-    herokumsg = "Not connected to heroku postgresql."
-    pass
-
 @bot.event
 async def on_ready():
     with open('guilds.json', 'r') as f:
@@ -73,7 +55,7 @@ async def on_ready():
         statusmsg = 'No status'
     else:
         statusmsg = cstmstatus
-    print(f'\n{bot.user.name} is online.\nConnected to {len(bot.guilds)} {sver}!\n\nStatus:\n{statusmsg}\n\n{herokumsg}')
+    print(f'\n{bot.user.name} is online.\nConnected to {len(bot.guilds)} {sver}!\n\nStatus:\n{statusmsg}')
     for inguilds in bot.guilds:
         if not str(inguilds.id) in cstmguild:
             cstmguild[str(inguilds.id)] = {}
@@ -101,6 +83,27 @@ async def on_ready():
                 del cstmguild[removeguild]['VC']['VCList'][removelist]
     with open('guilds.json', 'w') as f:
         json.dump(cstmguild, f, indent=4)
+
+    # ERASE EVERYTHING ABOVE WHEN DONE
+    # START QUERY HERE
+
+    # Connects to heroku
+    #try:
+    #    with open('guilds.json', 'r') as f:
+    #        cstmguild = json.load(f)
+    #    DATABASE_URL = os.environ['DATABASE_URL']
+    #    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+    #    cur = conn.cursor()
+    #    cur.execute("CREATE TABLE guilds (ID serial NOT NULL PRIMARY KEY, GuildJSON json NOT NULL);") # Make sure to make checks to ignore if duplicates
+    #    cur.execute(f"INSERT INTO guilds (GuildJSON) VALUES ('{cstmguild}');")
+    #    cur.execute("SELECT GuildJSON FROM guilds;")
+    #    conn.commit()
+    #    cur.close()
+    #    conn.close()
+    #except KeyError:
+    #    pass
+
+    # END QUERY HERE
 
 load_dotenv()
 bot.run(os.getenv('token'))
