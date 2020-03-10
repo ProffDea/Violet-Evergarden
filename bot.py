@@ -38,7 +38,7 @@ async def on_ready():
         conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
     finally:
         cur = conn.cursor()
-        cur.execute("DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsons') THEN COPY (SELECT data FROM jsons WHERE name = 'Guilds') TO '{}'; END IF; END $$; CREATE TABLE IF NOT EXISTS jsons (id serial NOT NULL PRIMARY KEY, name TEXT UNIQUE, data json NOT NULL); INSERT INTO jsons (name, data) VALUES ('Guilds', '{}') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name, message) VALUES ('Status', 'Test') ON CONFLICT (name) DO NOTHING; SELECT * FROM bot WHERE name = 'Status';".format(os.path.realpath('guilds.json'), {}))
+        cur.execute("DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsons') THEN COPY (SELECT data FROM jsons WHERE name = 'Guilds') TO '{}'; END IF; END $$; CREATE TABLE IF NOT EXISTS jsons (id serial NOT NULL PRIMARY KEY, name TEXT UNIQUE, data json NOT NULL); INSERT INTO jsons (name, data) VALUES ('Guilds', '{}') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; SELECT * FROM bot WHERE name = 'Status';".format(os.path.realpath('guilds.json'), {}))
         rows = cur.fetchall()
         for r in rows:
             if r[0] == "Status":
