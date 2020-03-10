@@ -23,7 +23,7 @@ class Events(commands.Cog):
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
         finally:
             cur = conn.cursor()
-            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
             conn.commit()
             cur.close()
             conn.close()
@@ -44,7 +44,7 @@ class Events(commands.Cog):
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
         finally:
             cur = conn.cursor()
-            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
             conn.commit()
             cur.close()
             conn.close()
@@ -101,12 +101,12 @@ class Events(commands.Cog):
                     json.dump(cstmguild, f)
         try:
             DATABASE_URL = os.environ['DATABASE_URL']
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require') 
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
         finally:
             cur = conn.cursor()
-            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
             conn.commit()
             cur.close()
             conn.close()
@@ -127,7 +127,7 @@ class Events(commands.Cog):
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
         finally:
             cur = conn.cursor()
-            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
             conn.commit()
             cur.close()
             conn.close()
@@ -169,7 +169,7 @@ class Events(commands.Cog):
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
         finally:
             cur = conn.cursor()
-            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
             conn.commit()
             cur.close()
             conn.close()

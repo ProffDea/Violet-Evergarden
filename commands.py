@@ -113,7 +113,7 @@ class Commands(commands.Cog):
                     break
                 cur.close()
                 conn.close()
-            await ctx.send(f"```\nid   name      data\n--------------------------\n{theid} | {name} | {data}\n```")
+            await ctx.send(f"```\nid   name      data\n--------------------------\n{theid} | {name} | {data}\n```\n{os.path.realpath('guilds.json')}")
             #with open('guilds.json', 'r') as f:
             #    cstmguild = json.load(f)
             #await ctx.send(cstmguild)
