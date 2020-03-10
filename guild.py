@@ -1,6 +1,8 @@
 import json
 import asyncio
 import discord
+import psycopg2
+import os
 from discord.ext import commands
 
 TestServerID = 648977487744991233 # ID is the test server ID. Feel free to change it
@@ -23,7 +25,18 @@ class Settings(commands.Cog):
                     cstmguild[str(ctx.guild.id)]['Custom Prefix'] = changeprefix
                     await ctx.send(f"Prefix for `{ctx.guild.name}` has been changed to **{changeprefix}**")
                     with open('guilds.json', 'w') as f:
-                        json.dump(cstmguild, f, indent=4)
+                        json.dump(cstmguild, f)
+                    try:
+                        DATABASE_URL = os.environ['DATABASE_URL']
+                        conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                    except KeyError:
+                        conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                    finally:
+                        cur = conn.cursor()
+                        cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                        conn.commit()
+                        cur.close()
+                        conn.close()
                 else:
                     await ctx.send("Please make the prefix less than 10 characters long.")
             else:
@@ -47,25 +60,34 @@ class Settings(commands.Cog):
     @commands.command(name='Status', help="Changes bot's status message.") # Anyone can use this command and it changes the bot's status.
     @commands.guild_only()
     async def status(self, ctx, *, changestatus=None): # example(*, args) : ex. "Example text" | example(*args) : ex. "Example" "text"
-        with open('guilds.json', 'r') as f:
-            cstmguild = json.load(f)
-        if changestatus == None:
-            cstmguild[str(TestServerID)]['Custom Status'] = ''
-            await self.bot.change_presence(activity=discord.Game(''))
-            with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
-        elif len(changestatus) <= 128:
-            if 'https://' in changestatus:
-                await ctx.send('No links.')
-            else:
-                if not 'Custom Status' in cstmguild[str(TestServerID)]:
-                    cstmguild[str(TestServerID)]['Custom Status'] = ''
-                cstmguild[str(TestServerID)]['Custom Status'] = changestatus
-                await self.bot.change_presence(activity=discord.Game(changestatus))
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        finally:
+            cur =conn.cursor()
+            with open('guilds.json', 'r') as f:
+                cstmguild = json.load(f)
+            if changestatus == None:
+                cur.execute("UPDATE bot SET message = '' WHERE name = 'Status';")
+                conn.commit()
+                await self.bot.change_presence(activity=discord.Game(''))
                 with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
-        elif len(changestatus) >= 128:
-            await ctx.send(f"Character limit is 128. You reached {len(changestatus)} characters.")
+                        json.dump(cstmguild, f)
+            elif len(changestatus) <= 128:
+                if 'https://' in changestatus:
+                    await ctx.send('No links.')
+                else:
+                    cur.execute(f"UPDATE bot SET message = '{changestatus}' WHERE name = 'Status';")
+                    conn.commit()
+                    await self.bot.change_presence(activity=discord.Game(changestatus))
+                    with open('guilds.json', 'w') as f:
+                        json.dump(cstmguild, f)
+            elif len(changestatus) >= 128:
+                await ctx.send(f"Character limit is 128. You reached {len(changestatus)} characters.")
+            cur.close()
+            conn.close()
 
 
     @commands.command(name='Vc', help="Allows the use of personal voice channels.\n'Vc' while not in a voice channel will bring up the 'User Menu'.\n'Vc' while in a normal voice channel will bring up the 'Main Menu'.\n'Vc' while in a personal voice channel will bring up the 'Voice Channel Setting Menu'.\n'Vc [argument]' while in a personal voice channel will bring up the 'Member Menu'.") # False = empty | True = not empty
@@ -303,14 +325,36 @@ class Settings(commands.Cog):
                                                         cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]["Static"] = staticstatus
                                                         await ctx.send(staticend)
                                                         with open('guilds.json', 'w') as f:
-                                                            json.dump(cstmguild, f, indent=4)
+                                                            json.dump(cstmguild, f)
+                                                        try:
+                                                            DATABASE_URL = os.environ['DATABASE_URL']
+                                                            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                                        except KeyError:
+                                                            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                                        finally:
+                                                            cur = conn.cursor()
+                                                            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                                            conn.commit()
+                                                            cur.close()
+                                                            conn.close()
                                                         return
                                                     elif waitsetting.content == '4' and cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][checkmsg]['Message'] != False or 'quick menu' in waitsetting.content.lower() and cstmguild[str(ctx.guild.id)]['VC']['AutoVC'][checkmsg]['Message'] != False:
                                                         await first_menu.delete()
                                                         cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]['AutoMenu'] = automenustatus
                                                         await ctx.send(automenuend)
                                                         with open('guilds.json', 'w') as f:
-                                                            json.dump(cstmguild, f, indent=4)
+                                                            json.dump(cstmguild, f)
+                                                        try:
+                                                            DATABASE_URL = os.environ['DATABASE_URL']
+                                                            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                                        except KeyError:
+                                                            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                                        finally:
+                                                            cur = conn.cursor()
+                                                            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                                            conn.commit()
+                                                            cur.close()
+                                                            conn.close()
                                                         return
                                                     elif waitsetting.content.lower() == 'exit':
                                                         await first_menu.delete()
@@ -328,7 +372,18 @@ class Settings(commands.Cog):
                                         del cstmguild[str(ctx.guild.id)]['VC']['VCList'][lelist][leowner]
                                         await ctx.send(f"**{ctx.author.name}** is the new owner of '{ctx.author.voice.channel.name}'!\nOld owner was **{ownertemp.name}**.")
                                         with open('guilds.json', 'w') as f:
-                                            json.dump(cstmguild, f, indent=4)
+                                            json.dump(cstmguild, f)
+                                        try:
+                                            DATABASE_URL = os.environ['DATABASE_URL']
+                                            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                        except KeyError:
+                                            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                        finally:
+                                            cur = conn.cursor()
+                                            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                            conn.commit()
+                                            cur.close()
+                                            conn.close()
                                         return
                                     else:
                                         await ctx.send(f"**{ownertemp.name}** is the owner of '{temp.name}', __NOT__ **{ctx.author.name}**!\nCan not claim ownership unless owner is not in voice channel and it's not set to permanent.")
@@ -376,7 +431,18 @@ class Settings(commands.Cog):
                     else:
                         await ctx.send(f"`Manage Channel` permissions required to access automated voice channel menu for '{ctx.author.voice.channel.name}'!")
                 with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
+                    json.dump(cstmguild, f)
+                try:
+                    DATABASE_URL = os.environ['DATABASE_URL']
+                    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                except KeyError:
+                    conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                finally:
+                    cur = conn.cursor()
+                    cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                    conn.commit()
+                    cur.close()
+                    conn.close()
             except AttributeError:
                 # Work in progress
                 if bool(cstmguild[str(ctx.guild.id)]['VC']['AutoVC']) == False:
@@ -464,13 +530,24 @@ class Settings(commands.Cog):
                                 await welcomemenu.delete()
                                 await ctx.send(f"```\n'{allchannel.name}' has been set as the welcome channel!\nDon't forget to set a welcome message.\n```\n{menuexit}")
                                 if bool(cstmguild[str(ctx.guild.id)]['Welcome']) == False:
-                                    cstmguild[str(ctx.guild.id)]['Welcome'][allchannel.id] = "Welcome {}!"
+                                    cstmguild[str(ctx.guild.id)]['Welcome'][allchannel.id] = "Welcome **{}**!"
                                 else:
                                     for replacechl in list(cstmguild[str(ctx.guild.id)]['Welcome']):
                                         cstmguild[str(ctx.guild.id)]['Welcome'][allchannel.id] = cstmguild[str(ctx.guild.id)]['Welcome'][replacechl]
                                         del cstmguild[str(ctx.guild.id)]['Welcome'][replacechl]
                                 with open('guilds.json', 'w') as f:
-                                    json.dump(cstmguild, f, indent=4)
+                                    json.dump(cstmguild, f)
+                                try:
+                                    DATABASE_URL = os.environ['DATABASE_URL']
+                                    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                except KeyError:
+                                    conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                finally:
+                                    cur = conn.cursor()
+                                    cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                    conn.commit()
+                                    cur.close()
+                                    conn.close()
                                 return
                         if welcomewait.content == 'remove':
                             if bool(cstmguild[str(ctx.guild.id)]['Welcome']) == True:
@@ -480,7 +557,18 @@ class Settings(commands.Cog):
                                     await ctx.send(f"```\n'{welcomedelname.name}' will no longer receive welcome messages!\n```\n{menuexit}")
                                     del cstmguild[str(ctx.guild.id)]['Welcome'][welcomedelchl]
                                 with open('guilds.json', 'w') as f:
-                                    json.dump(cstmguild, f, indent=4)
+                                    json.dump(cstmguild, f)
+                                try:
+                                    DATABASE_URL = os.environ['DATABASE_URL']
+                                    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                except KeyError:
+                                    conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                finally:
+                                    cur = conn.cursor()
+                                    cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                    conn.commit()
+                                    cur.close()
+                                    conn.close()
                                 return
                         elif welcomewait.content == 'back':
                             await welcomemenu.delete()
@@ -514,7 +602,18 @@ class Settings(commands.Cog):
                             cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist] = "Welcome {}!"
                             await ctx.send(f"```\nWelcome message has been set back to default:\n```\n{cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist]}\n\n{menuexit}")
                             with open('guilds.json', 'w') as f:
-                                json.dump(cstmguild, f, indent=4)
+                                json.dump(cstmguild, f)
+                            try:
+                                DATABASE_URL = os.environ['DATABASE_URL']
+                                conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                            except KeyError:
+                                conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                            finally:
+                                cur = conn.cursor()
+                                cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                conn.commit()
+                                cur.close()
+                                conn.close()
                             return
                         elif welcomemsgwait.content.lower() == 'back':
                             await welcomemsgmenu.delete()
@@ -528,7 +627,18 @@ class Settings(commands.Cog):
                             await ctx.send(f"```\nWelcome message set!\n```\n{welcomemsgwait.content}\n\n{menuexit}")
                             cstmguild[str(ctx.guild.id)]['Welcome'][welcomelist] = welcomemsgwait.content
                             with open('guilds.json', 'w') as f:
-                                json.dump(cstmguild, f, indent=4)
+                                json.dump(cstmguild, f)
+                            try:
+                                DATABASE_URL = os.environ['DATABASE_URL']
+                                conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                            except KeyError:
+                                conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                            finally:
+                                cur = conn.cursor()
+                                cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                conn.commit()
+                                cur.close()
+                                conn.close()
                             return
                 elif firstwait.content == '3':
                     await firstmenu.delete()
@@ -556,7 +666,18 @@ class Settings(commands.Cog):
                                         cstmguild[str(ctx.guild.id)]['Goodbye'][allchannel.id] = cstmguild[str(ctx.guild.id)]['Goodbye'][replacechl]
                                         del cstmguild[str(ctx.guild.id)]['Goodbye'][replacechl]
                                 with open('guilds.json', 'w') as f:
-                                    json.dump(cstmguild, f, indent=4)
+                                    json.dump(cstmguild, f)
+                                try:
+                                    DATABASE_URL = os.environ['DATABASE_URL']
+                                    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                except KeyError:
+                                    conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                finally:
+                                    cur = conn.cursor()
+                                    cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                    conn.commit()
+                                    cur.close()
+                                    conn.close()
                                 return
                         if goodbyewait.content == 'remove':
                             if bool(cstmguild[str(ctx.guild.id)]['Goodbye']) == True:
@@ -566,7 +687,18 @@ class Settings(commands.Cog):
                                     await ctx.send(f"```\n'{goodbyedelname.name}' will no longer receive goodbye messages!\n```\n{menuexit}")
                                     del cstmguild[str(ctx.guild.id)]['Goodbye'][goodbyedelchl]
                                 with open('guilds.json', 'w') as f:
-                                    json.dump(cstmguild, f, indent=4)
+                                    json.dump(cstmguild, f)
+                                try:
+                                    DATABASE_URL = os.environ['DATABASE_URL']
+                                    conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+                                except KeyError:
+                                    conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+                                finally:
+                                    cur = conn.cursor()
+                                    cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.getenv('guildjson')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+                                    conn.commit()
+                                    cur.close()
+                                    conn.close()
                                 return
                         elif goodbyewait.content == 'back':
                             await goodbyemenu.delete()
