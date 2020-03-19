@@ -6,17 +6,25 @@ import psycopg2
 from dotenv import load_dotenv
 from discord.ext import commands
 
-if not os.path.isfile('guilds.json'): # JSON file stores all data required for this to work
-    with open('guilds.json', 'w') as f:
-        json.dump({}, f)
-
 def cstmprefix(bot, msg):
-    with open('guilds.json', 'r') as f:
-        cstmguild = json.load(f)
     if not msg.guild:
         return "v."
     else:
-        return commands.when_mentioned_or(cstmguild[str(msg.guild.id)]['Custom Prefix'])(bot, msg)
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
+        finally:
+            cur = conn.cursor()
+            cur.execute(f"SELECT guild, prefix FROM servers WHERE guild = '{msg.guild.id}';")
+            pre = cur.fetchall()
+            for p in pre:
+                if msg.guild.id == p[0]:
+                    vprefix = p[1]
+            cur.close()
+            conn.close()
+            return commands.when_mentioned_or(vprefix)(bot, msg)
 
 helpmsg = "Please make sure I have all the necessary permissions to properly work!\nPermissions such as:\nManage Channels, Read Text Channels & See Voice Channels, Send Messages, Manage Messages, Use External Emojis, Connect, Move Members"
 bot = commands.Bot(command_prefix=cstmprefix, description=helpmsg, case_insensitive=True)
@@ -35,10 +43,11 @@ async def on_ready():
         DATABASE_URL = os.environ['DATABASE_URL']
         conn = psycopg2.connect(DATABASE_URL, sslmode='require')
     except KeyError:
-        conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
     finally:
         cur = conn.cursor()
-        cur.execute("DO $$ BEGIN IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'jsons') THEN COPY (SELECT data FROM jsons WHERE name = 'Guilds') TO '{}'; END IF; END $$; CREATE TABLE IF NOT EXISTS jsons (id serial NOT NULL PRIMARY KEY, name TEXT UNIQUE, data json NOT NULL); INSERT INTO jsons (name, data) VALUES ('Guilds', '{}') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; SELECT * FROM bot WHERE name = 'Status';".format(os.path.realpath('guilds.json'), {}))
+        cur.execute("CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS servers (guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT); CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], members SMALLINT NOT NULL, static BOOLEAN NOT NULL);")
+        cur.execute("SELECT * FROM bot WHERE name = 'Status';")
         rows = cur.fetchall()
         for r in rows:
             if r[0] == "Status":
@@ -54,39 +63,29 @@ async def on_ready():
         else:
             statusmsg = cstmstatus
         print(f'\n{bot.user.name} is online in {len(bot.guilds)} {sver}.\n\nStatus:\n{statusmsg}\n')
-        with open('guilds.json', 'r') as f:
-            cstmguild = json.load(f)
         for inguilds in bot.guilds:
-            if not str(inguilds.id) in cstmguild:
-                cstmguild[str(inguilds.id)] = {}
-            if not 'VC' in cstmguild[str(inguilds.id)]:
-                cstmguild[str(inguilds.id)]['VC'] = {}
-            if not 'AutoVC' in cstmguild[str(inguilds.id)]['VC']:
-                cstmguild[str(inguilds.id)]['VC']['AutoVC'] = {}
-            if not 'VCList' in cstmguild[str(inguilds.id)]['VC']:
-                cstmguild[str(inguilds.id)]['VC']['VCList'] = {}
-            if not 'Custom Prefix' in cstmguild[str(inguilds.id)]:
-                cstmguild[str(inguilds.id)]['Custom Prefix'] = 'v.'
-            if not 'Welcome' in cstmguild[str(inguilds.id)]:
-                cstmguild[str(inguilds.id)]['Welcome'] = {}
-            if not 'Goodbye' in cstmguild[str(inguilds.id)]:
-                cstmguild[str(inguilds.id)]['Goodbye'] = {}
-        for removeguild in list(cstmguild):
-            if bot.get_guild(int(removeguild)) == None:
-                del cstmguild[removeguild]
+            cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{inguilds.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
+        cur.execute("SELECT guild, autovc FROM servers;")
+        allguilds = cur.fetchall()
+        for g in allguilds:
+            if bot.get_guild(g[0]) == None:
+                cur.execute(f"DELETE FROM servers WHERE guild = '{g[0]}';")
                 continue
-            for removeauto in list(cstmguild[str(removeguild)]['VC']['AutoVC']):
-                if bot.get_channel(int(removeauto)) == None:
-                    del cstmguild[removeguild]['VC']['AutoVC'][removeauto]
-            for removelist in list(cstmguild[str(removeguild)]['VC']['VCList']):
-                if bot.get_channel(int(removelist)) == None:
-                    del cstmguild[removeguild]['VC']['VCList'][removelist]
-        with open('guilds.json', 'w') as f:
-            json.dump(cstmguild, f)
-        cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            if g[1] == None:
+                pass
+            else:
+                if bot.get_channel(g[1]) == None:
+                    cur.execute("DELETE autovc FROM servers WHERE autovc = '{%s}';", (g[1],))
+                    continue
+        cur.execute("SELECT voicechl FROM vclist;")
+        lists = cur.fetchall()
+        for l in lists:
+            if bot.get_channel(l[0]) == None:
+                cur.execute(f"DELETE FROM vclist WHERE voicechl = '{l[0]}';")
+                continue
         conn.commit()
         cur.close()
         conn.close()
 
 load_dotenv()
-bot.run(os.getenv('token')) # Make env file with token variable
+bot.run(os.getenv('token'))
