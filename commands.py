@@ -1,7 +1,10 @@
 import discord
+import json
+import psycopg2
+import os
 from discord.ext import commands
 
-MissingPerm = MissingPerm = "Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
+MissingPerm = "Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
 
 class Commands(commands.Cog):
     def __init__(self, bot):
@@ -94,7 +97,26 @@ class Commands(commands.Cog):
     @commands.is_owner()
     async def tst(self, ctx):
         try:
-            await ctx.send('owo')
+            try: # Connects to heroku
+                DATABASE_URL = os.environ['DATABASE_URL']
+                conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+            except KeyError: # Connects to local database
+                conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+            finally:
+                cur = conn.cursor()
+                cur.execute("SELECT * FROM jsons;")
+                rows = cur.fetchall()
+                for r in rows:
+                    theid = r[0]
+                    name = r[1]
+                    data = r[2]
+                    break
+                cur.close()
+                conn.close()
+            await ctx.send(f"```\nid   name      data\n--------------------------\n{theid} | {name} | {data}\n```\n{os.path.realpath('guilds.json')}")
+            #with open('guilds.json', 'r') as f:
+            #    cstmguild = json.load(f)
+            #await ctx.send(cstmguild)
         except discord.Forbidden:
             return
 

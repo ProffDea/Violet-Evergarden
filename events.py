@@ -1,4 +1,6 @@
 import json
+import psycopg2
+import os
 from discord.ext import commands
 
 TestServerEmoji = "<:IDontKnowThatCommand:676544628274757633>" # Emoji is from the test server. Anime girl with question marks.
@@ -13,7 +15,18 @@ class Events(commands.Cog):
             cstmguild = json.load(f)
         await guild_data(cstmguild, guild.owner)
         with open('guilds.json', 'w') as f:
-            json.dump(cstmguild, f, indent=4)
+            json.dump(cstmguild, f)
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        finally:
+            cur = conn.cursor()
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            conn.commit()
+            cur.close()
+            conn.close()
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):
@@ -23,7 +36,18 @@ class Events(commands.Cog):
             if self.bot.get_guild(int(removeguild)) == None:
                 del cstmguild[removeguild]
         with open('guilds.json', 'w') as f:
-            json.dump(cstmguild, f, indent=4)
+            json.dump(cstmguild, f)
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        finally:
+            cur = conn.cursor()
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            conn.commit()
+            cur.close()
+            conn.close()
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
@@ -69,12 +93,23 @@ class Events(commands.Cog):
             if self.bot.get_channel(int(vclist)) == None:
                 del cstmguild[str(channel.guild.id)]['VC']['VCList'][vclist]
                 with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
+                    json.dump(cstmguild, f)
         for autovc in list(cstmguild[str(channel.guild.id)]['VC']['AutoVC']):
             if self.bot.get_channel(int(autovc)) == None:
                 del cstmguild[str(channel.guild.id)]['VC']['AutoVC'][autovc]
                 with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
+                    json.dump(cstmguild, f)
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require') 
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        finally:
+            cur = conn.cursor()
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            conn.commit()
+            cur.close()
+            conn.close()
 
     @commands.Cog.listener()
     async def on_message_delete(self, message):
@@ -84,7 +119,18 @@ class Events(commands.Cog):
             if cstmguild[str(message.guild.id)]['VC']['AutoVC'][automsg]['Message'] == message.id:
                 cstmguild[str(message.guild.id)]['VC']['AutoVC'][automsg]['Message'] = False
             with open('guilds.json', 'w') as f:
-                json.dump(cstmguild, f, indent=4)
+                json.dump(cstmguild, f)
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        finally:
+            cur = conn.cursor()
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            conn.commit()
+            cur.close()
+            conn.close()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -102,7 +148,7 @@ class Events(commands.Cog):
                 await vcclone.edit(reason='Moving', position=autovc.position + 1)
                 await member.move_to(vcclone)
                 with open('guilds.json', 'w') as f:
-                    json.dump(cstmguild, f, indent=4)
+                    json.dump(cstmguild, f)
         for dellist in list(cstmguild[str(member.guild.id)]['VC']['VCList']):
             vclist = self.bot.get_channel(int(dellist))
             if before.channel == vclist or after.channel == vclist:
@@ -115,7 +161,18 @@ class Events(commands.Cog):
                             await after.channel.delete(reason='VC is empty.')
                         del cstmguild[str(member.guild.id)]['VC']['VCList'][dellist]
                     with open('guilds.json', 'w') as f:
-                        json.dump(cstmguild, f, indent=4)
+                        json.dump(cstmguild, f)
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password')) # Make env file with variables
+        finally:
+            cur = conn.cursor()
+            cur.execute(f"CREATE TEMP TABLE jsonscopy as (SELECT * FROM jsons limit 0); COPY jsonscopy (data) FROM '{os.path.realpath('guilds.json')}'; UPDATE jsons SET data = jsonscopy.data FROM jsonscopy WHERE jsons.name = 'Guilds';")
+            conn.commit()
+            cur.close()
+            conn.close()
 
 async def guild_data(cstmguild, user):
     if not str(user.guild.id) in cstmguild:
