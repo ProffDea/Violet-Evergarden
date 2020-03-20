@@ -181,7 +181,7 @@ class Commands(commands.Cog):
             cur.close()
             conn.close()
 
-    @commands.command(name='Uptime', help="Checks how long a bot has but online for.")
+    @commands.command(name='Uptime', help="Checks how long a bot has been online for.")
     async def uptime(self, ctx):
         try:
             lt = time.time()
