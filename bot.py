@@ -1,8 +1,4 @@
-import discord
-import os
-import os.path
-import json
-import psycopg2
+import discord, os, psycopg2
 from dotenv import load_dotenv
 from discord.ext import commands
 
