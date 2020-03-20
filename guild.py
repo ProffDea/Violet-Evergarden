@@ -1,8 +1,4 @@
-import json
-import asyncio
-import discord
-import os
-import psycopg2
+import asyncio, discord, os, psycopg2
 from discord.ext import commands
 
 MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"

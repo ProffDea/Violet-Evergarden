@@ -1,6 +1,4 @@
-import json
-import os
-import psycopg2
+import json, os, psycopg2
 from discord.ext import commands
 
 TestServerEmoji = "<:IDontKnowThatCommand:676544628274757633>" # Emoji is from the test server. Anime girl with question marks.
