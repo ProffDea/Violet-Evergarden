@@ -5,11 +5,10 @@ import os
 import psycopg2
 from discord.ext import commands
 
-TestServerID = 648977487744991233 # ID is the test server ID. Feel free to change it
-MissingPerm = "Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
-menuexit = 'Menu has been exited.'
-menutimeout = 'Menu has been exited due to timeout.'
-menuerror = 'Menu has been exited due to error (most likely menu got deleted).'
+MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
+menuexit = '💌 | Menu has been exited.'
+menutimeout = '💌 | Menu has been exited due to timeout.'
+menuerror = '💌 | Menu has been exited due to error (menu most likely got deleted).'
 
 class Settings(commands.Cog):
     def __init__(self, bot):
@@ -67,8 +66,18 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try: # Catches timeout error
+                cur.execute(f"SELECT prefix FROM servers WHERE guild = '{ctx.guild.id}'")
+                rows = cur.fetchall()
+                for r in rows:
+                    fix = r[0]
                 while True: # Menu for the user
                     counter = counter + 1
+                    p = ctx.channel.permissions_for(ctx.author)
+                    mc = p.manage_channels
+                    if mc == True:
+                        grant = "**Access Granted**"
+                    elif mc == False:
+                        grant = "**Access Denied**"
                     if counter == 1:
                         cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
                         rows = cur.fetchall()
@@ -80,12 +89,12 @@ class Settings(commands.Cog):
                                 get = self.bot.get_channel(r[0])
                                 value = get.name
                                 break
-                        cont = f"```py\n'Menu for User' - {ctx.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {value}\n`2.)` `Personal Voice Channel`\n\n```py\n# Enter one of the corresponding options\nEnter 'exit' to leave menu\n```"
+                        cont = f"```py\n'Menu for User' - {ctx.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {value} - {grant}\n`2.)` `Personal Voice Channel`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
                         msg = await ctx.send(cont)
                     mm = await self.bot.wait_for('message', timeout=120, check=menu)
                     mmc = mm.content.lower()
 
-                    if mmc == '1' or 'auto' in mmc:
+                    if mmc == '1' and mc == True or 'auto' in mmc and mc == True:
                         await msg.delete()
                         counter = 0
                         while True: # Menu for Auto Voice Channel
@@ -94,11 +103,12 @@ class Settings(commands.Cog):
                                 if value == 'None':
                                     option = ''
                                 else:
-                                    option = f" | Type `none` to remove *{value}*"
-                                cont = f"```py\n'Menu for Auto Voice Channel' - {value}\n```\n**Please enter a valid voice channel**{option}\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\nEnter 'back' to go back a menu\nEnter 'exit' to leave menu\n```"
+                                    option = f" |`💌`| Type **none** to __remove `{value}`__"
+                                cont = f"```py\n'Menu for Auto Voice Channel' - {value}\n```\nPlease enter a voice channel{option}\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                 msg = await ctx.send(cont)
                             mm = await self.bot.wait_for('message', timeout=120, check=menu)
                             mmc = mm.content.lower()
+                            back = 0
                             for chan in ctx.guild.channels:
                                 isi = isinstance(chan, discord.VoiceChannel)
 
@@ -114,7 +124,7 @@ class Settings(commands.Cog):
                                     while True: # Confirm Settings for Auto Voice Channel
                                         counter = counter + 1
                                         if counter == 1:
-                                            cont = f"```py\n'Menu for Auto Voice Channel (Continued)' - {value}\n```\n`{place}` **Selected** | Type `confirm` to __save settings__\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\nEnter 'back' to go back a menu\nEnter 'exit' to leave menu\n```"
+                                            cont = f"```py\n'Menu for Auto Voice Channel (Continued)' - {value}\n```\n`{place}` Selected |`💌`| Type **confirm** to __save settings__\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                             msg = await ctx.send(cont)
                                         mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                         mmc = mm.content.lower()
@@ -122,11 +132,14 @@ class Settings(commands.Cog):
                                         if mmc == 'confirm':
                                             await msg.delete()
                                             cur.execute(f"UPDATE servers SET autovc = {clean} WHERE guild = '{ctx.guild.id}';")
-                                            cont = f"```py\n# Auto Voice Channel\n'SETTINGS SAVED'\n# from '{value}' to '{place}'\n```"
+                                            cont = f"```py\n# Auto Voice Channel\n```\n💌 **SETTINGS SAVED** 💌\n\n```py\n# from '{value}' to '{place}'\n```"
                                             await ctx.send(cont)
                                             return
 
                                         elif mmc == 'back':
+                                            back = back + 1
+                                            counter = 0
+                                            await msg.delete()
                                             break
 
                                         elif mmc == 'exit':
@@ -134,14 +147,19 @@ class Settings(commands.Cog):
                                             await ctx.send(menuexit)
                                             return
 
-                                        await ctx.send("Please choose a valid option.")
+                                        elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                            await msg.delete()
+                                            return
 
-                                    # End of settings for Auto Voice Channel
+                                        elif mmc != 'back':
+                                            await ctx.send("Please choose a valid option.")
+
+                                    # End of Settings for Auto Voice Channel
 
                                 else:
                                     pass
 
-                            if mmc == 'back':
+                            if mmc == 'back' and back == 0:
                                 counter = 0
                                 await msg.delete()
                                 break
@@ -151,17 +169,25 @@ class Settings(commands.Cog):
                                 await ctx.send(menuexit)
                                 return
 
-                            await ctx.send("Please choose a valid option.")
+                            elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                await msg.delete()
+                                return
 
-                    # End of menu for Auto Voice Channel
+                            elif mmc != 'back':
+                                await ctx.send("Please choose a valid option.")
 
+                    # End of Menu for Auto Voice Channel
+
+                    elif mmc == '1' and mc == False or 'auto' in mmc and mc == False:
+                        await ctx.send(f"**{ctx.author.name}** requires the `Manage Channels` permissions to access that menu!")
+                    
                     elif mmc == '2' or 'personal' in mmc:
                         await msg.delete()
                         counter = 0
                         while True: # Menu for Personal Voice Channel
                             counter = counter + 1
                             if counter == 1:
-                                cont = "```py\n'Menu for Personal Voice Channel'\n```\n`1.)` `Create voice channel`\n`2.)` `Manage voice channels`\n\n```py\n# Personal voice channels are channels made for server members to edit to their heart's content\nEnter 'back' to go back a menu\nEnter 'exit' to leave menu\n```"
+                                cont = "```py\n'Menu for Personal Voice Channel'\n```\n`1.)` `Create voice channel`\n`2.)` `Manage voice channels`\n\n```py\n# Personal voice channels are channels made for server members to edit to their heart's content\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                 msg = await ctx.send(cont)
                             mm = await self.bot.wait_for('message', timeout=120, check=menu)
                             mmc = mm.content.lower()
@@ -178,7 +204,7 @@ class Settings(commands.Cog):
                                         return
                                 vc = await ctx.guild.create_voice_channel(name=f"💌{ctx.author.name}")
                                 cur.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vc.id}', '{ctx.author.id}', '1', 'f')")
-                                cont = f"```py\n# Personal Voice Channel\n```\n**CHANNEL CREATED**\n\n```py\n# name/id: {vc.name} ({vc.id})\n```"
+                                cont = f"```py\n# Personal Voice Channel\n```\n💌 **CHANNEL CREATED** 💌\n\n```py\n# name/id: {vc.name} ({vc.id})\n```"
                                 msg = await ctx.send(cont)
                                 return
 
@@ -187,8 +213,11 @@ class Settings(commands.Cog):
                                 counter = 0
                                 while True: # Menu for Managing
                                     counter = counter + 1
+                                    #cur.execute("SELECT * FROM vclist;")
+                                    #rows = cur.fetchall()
+                                    #for r in rows:
                                     if counter == 1:
-                                        cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\n\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\nEnter 'back' to go back a menu\nEnter 'exit' to leave menu\n```"
+                                        cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\n\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                         msg = await ctx.send(cont)
                                     mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                     mmc = mm.content.lower()
@@ -203,7 +232,14 @@ class Settings(commands.Cog):
                                         await ctx.send(menuexit)
                                         return
 
-                                    await ctx.send("Please choose a valid option.")
+                                    elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                        await msg.delete()
+                                        return
+
+                                    elif mmc != 'back':
+                                        await ctx.send("Please choose a valid option.")
+
+                                    # End of Managing for Personal Voice Channel
 
                             elif mmc == 'back':
                                 counter = 0
@@ -215,16 +251,28 @@ class Settings(commands.Cog):
                                 await ctx.send(menuexit)
                                 return
 
-                            await ctx.send("Please choose a valid option.")
+                            elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                await msg.delete()
+                                return
 
-                        # End of menu for Personal Voice Channel
+                            elif mmc != 'back':
+                                await ctx.send("Please choose a valid option.")
+
+                        # End of Menu for Personal Voice Channel
                     
                     elif mmc == 'exit':
                         await msg.delete()
                         await ctx.send(menuexit)
                         return
+                    
+                    elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                        await msg.delete()
+                        return
 
-                    await ctx.send("Please choose a valid option.")
+                    elif mmc != 'exit':
+                        await ctx.send("Please choose a valid option.")
+
+                    # End of Menu for User
 
             except asyncio.TimeoutError:
                 await msg.delete()
