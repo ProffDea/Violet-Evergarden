@@ -1,7 +1,7 @@
 import asyncio, discord, os, psycopg2
 from discord.ext import commands
 
-MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
+MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Add Reactions`, `Connect`, `Move Members`"
 menuexit = '💌 | Menu has been exited.'
 menutimeout = '💌 | Menu has been exited due to timeout.'
 menuerror = '💌 | Menu has been exited due to error (menu most likely got deleted).'
@@ -71,21 +71,23 @@ class Settings(commands.Cog):
                     p = ctx.channel.permissions_for(ctx.author)
                     mc = p.manage_channels
                     if mc == True:
-                        grant = "**Access Granted**"
+                        grant = ""
                     elif mc == False:
-                        grant = "**Access Denied**"
+                        grant = " - **Access Denied**"
                     if counter == 1:
                         cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
                         rows = cur.fetchall()
                         for r in rows:
                             if r[0] == None:
                                 value = 'None'
+                                valueid = " | 'ID' - None"
                                 break
                             else:
                                 get = self.bot.get_channel(r[0])
                                 value = get.name
+                                valueid = f" | 'ID' - {get.id}"
                                 break
-                        cont = f"```py\n'Menu for User' - {ctx.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {value} - {grant}\n`2.)` `Personal Voice Channel`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
+                        cont = f"```py\n'Menu for User' - {ctx.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {value}{grant}\n`2.)` `Personal Voice Channel`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
                         msg = await ctx.send(cont)
                     mm = await self.bot.wait_for('message', timeout=120, check=menu)
                     mmc = mm.content.lower()
@@ -100,7 +102,7 @@ class Settings(commands.Cog):
                                     option = ''
                                 else:
                                     option = f" |`💌`| Type **none** to __remove `{value}`__"
-                                cont = f"```py\n'Menu for Auto Voice Channel' - {value}\n```\nPlease enter a voice channel{option}\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                cont = f"```py\n'Menu for Auto Voice Channel' - {value}{valueid}\n```\nPlease enter a voice channel{option}\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                 msg = await ctx.send(cont)
                             mm = await self.bot.wait_for('message', timeout=120, check=menu)
                             mmc = mm.content.lower()
@@ -120,7 +122,7 @@ class Settings(commands.Cog):
                                     while True: # Confirm Settings for Auto Voice Channel
                                         counter = counter + 1
                                         if counter == 1:
-                                            cont = f"```py\n'Menu for Auto Voice Channel (Continued)' - {value}\n```\n`{place}` Selected |`💌`| Type **confirm** to __save settings__\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                            cont = f"```py\n'Menu for Auto Voice Channel (Continued)' - {value}{valueid}\n```\n`{place}` Selected |`💌`| Type **confirm** to __save settings__\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                             msg = await ctx.send(cont)
                                         mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                         mmc = mm.content.lower()
@@ -213,7 +215,7 @@ class Settings(commands.Cog):
                                     #rows = cur.fetchall()
                                     #for r in rows:
                                     if counter == 1:
-                                        cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\n\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                        cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\nWork in progress\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                         msg = await ctx.send(cont)
                                     mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                     mmc = mm.content.lower()
