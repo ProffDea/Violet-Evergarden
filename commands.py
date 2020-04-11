@@ -1,4 +1,4 @@
-import discord, os, psycopg2, datetime, time, asyncio
+import discord, os, psycopg2, datetime, time, asyncio, __main__
 from discord.ext import commands
 from menu import menu
 
@@ -28,9 +28,12 @@ class Commands(commands.Cog):
     async def load(self, ctx, extension):
         try:
             try:
-                self.bot.load_extension(extension)
-                await ctx.send(f'Loaded {extension}')
-                print(f"Loaded {extension}")
+                if extension != __main__.__file__.replace('.py', ''):
+                    self.bot.load_extension(extension)
+                    await ctx.send(f'Loaded {extension}')
+                    print(f"Loaded {extension}")
+                else:
+                    await ctx.send(f"You can not load in the main file: {__main__.__file__.replace('.py', '')}")
             except Exception as error:
                 await ctx.send(f'{extension} could not be loaded. [{error}]')
         except discord.Forbidden:
