@@ -11,62 +11,62 @@ class Commands(commands.Cog):
 
     @commands.command(name='Lg', help='Bot goes offline')
     @commands.guild_only()
+    @commands.is_owner()
     async def boutaheadout(self, ctx):
-        if ctx.author.id == 649813303836672010 or ctx.author.id == 609329952180928513:
+        try:
+            await ctx.message.delete()
+            await self.bot.close()
+            print(f"{self.bot.user.name} has went offline.")
+        except discord.Forbidden:
             try:
-                await ctx.message.delete()
-                await self.bot.close()
-                print(f"{self.bot.user.name} has went offline.")
+                await ctx.send(MissingPerm)
             except discord.Forbidden:
-                try:
-                    await ctx.send(MissingPerm)
-                except discord.Forbidden:
-                    return
+                return
 
     @commands.command(name='L', help='Loads a cog.')
+    @commands.is_owner()
     async def load(self, ctx, extension):
-        if ctx.author.id == 649813303836672010 or ctx.author.id == 609329952180928513:
+        try:
             try:
-                try:
-                    self.bot.load_extension(extension)
-                    await ctx.send(f'Loaded {extension}')
-                    print(f"Loaded {extension}")
-                except Exception as error:
-                    await ctx.send(f'{extension} could not be loaded. [{error}]')
-            except discord.Forbidden:
-                return
+                self.bot.load_extension(extension)
+                await ctx.send(f'Loaded {extension}')
+                print(f"Loaded {extension}")
+            except Exception as error:
+                await ctx.send(f'{extension} could not be loaded. [{error}]')
+        except discord.Forbidden:
+            return
 
     @commands.command(name='U', help='Unloads a cog.')
+    @commands.is_owner()
     async def unload(self, ctx, extension):
-        if ctx.author.id == 649813303836672010 or ctx.author.id == 609329952180928513:
+        try:
             try:
-                try:
-                    if extension != 'commands':
-                        self.bot.unload_extension(extension)
-                        await ctx.send(f'Unloaded {extension}')
-                        print(f"Unloaded {extension}")
-                    else:
-                        await ctx.send("Please try reloading this script instead!")
-                        print("Please try reloading this script instead!")
-                except Exception as error:
-                    await ctx.send(f'{extension} could not be unloaded. [{error}]')
-            except discord.Forbidden:
-                return
+                if extension != 'commands':
+                    self.bot.unload_extension(extension)
+                    await ctx.send(f'Unloaded {extension}')
+                    print(f"Unloaded {extension}")
+                else:
+                    await ctx.send("Please try reloading this script instead!")
+                    print("Please try reloading this script instead!")
+            except Exception as error:
+                await ctx.send(f'{extension} could not be unloaded. [{error}]')
+        except discord.Forbidden:
+            return
     
     @commands.command(name='R', help='Reloads a cog.')
+    @commands.is_owner()
     async def reload(self, ctx, extension):
-        if ctx.author.id == 649813303836672010 or ctx.author.id == 609329952180928513:
+        try:
             try:
-                try:
-                    self.bot.unload_extension(extension)
-                    con = await ctx.send(f'Unloaded {extension}')
-                    self.bot.load_extension(extension)
-                    await con.edit(content=f'Reloaded {extension}')
-                    print(f"Reloaded {extension}")
-                except Exception as error:
-                    await ctx.send(f'{extension} could not be reloaded. [{error}]')
-            except discord.Forbidden:
-                return
+                self.bot.unload_extension(extension)
+                con = await ctx.send(f'Unloaded {extension}')
+                self.bot.load_extension(extension)
+                await con.edit(content=f'Reloaded {extension}')
+                print(f"Reloaded {extension}")
+            except Exception as error:
+                await ctx.send(f'{extension} could not be reloaded. [{error}]')
+        except discord.Forbidden:
+            return
     
     @commands.command(name='Rolelink', help='Link embeds for my server roles.') # Personal command
     @commands.is_owner()
