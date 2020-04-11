@@ -1,7 +1,8 @@
 import discord, os, psycopg2, datetime, time, asyncio
 from discord.ext import commands
+from menu import menu
 
-MissingPerm = MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Connect`, `Move Members`"
+MissingPerm = MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Add Reactions`, `Connect`, `Move Members`"
 ft = time.time()
 
 class Commands(commands.Cog):
@@ -169,6 +170,7 @@ class Commands(commands.Cog):
                 cur.execute("UPDATE bot SET message = '' WHERE name = 'Status';")
                 conn.commit()
                 await self.bot.change_presence(activity=discord.Game(''))
+                await ctx.message.add_reaction("✅")
             elif len(changestatus) <= 128:
                 if 'https://' in changestatus:
                     await ctx.send('No links.')
@@ -176,39 +178,59 @@ class Commands(commands.Cog):
                     cur.execute(f"UPDATE bot SET message = '{changestatus}' WHERE name = 'Status';")
                     conn.commit()
                     await self.bot.change_presence(activity=discord.Game(changestatus))
+                    await ctx.message.add_reaction("✅")
             elif len(changestatus) >= 128:
                 await ctx.send(f"Character limit is 128. You reached {len(changestatus)} characters.")
             cur.close()
             conn.close()
 
-    @commands.command(name='Uptime', help="Checks how long a bot has been online for.")
+    @commands.command(name='Uptime', help="Checks how long the bot has been online for.")
     async def uptime(self, ctx):
         try:
             lt = time.time()
             d = int(round(lt - ft))
             up = str(datetime.timedelta(seconds=d))
-            cont = f"💌 | **{self.bot.user.name}'s** uptime: {up}"
+            cont = f"**{self.bot.user.name}'s** uptime: {up}"
             msg = await ctx.send(cont)
             counter = 0
             sadd = 0
-            while True:
-                if counter <= 4:
-                    sadd = sadd + 1
-                    await asyncio.sleep(1)
-                    counter = counter + 1
-                    d = int(round(lt - ft)) + sadd
-                    up = str(datetime.timedelta(seconds=d))
-                    cont = f"💌 | **{self.bot.user.name}'s** uptime: {up}"
-                    await msg.edit(content=cont)
-                else:
-                    await msg.edit(content=cont + "\n💌 | Exit")
-                    return
+            while counter < 5:
+                counter = counter + 1
+                sadd = sadd + 1
+                await asyncio.sleep(1)
+                d = int(round(lt - ft)) + sadd
+                up = str(datetime.timedelta(seconds=d))
+                cont = f"**{self.bot.user.name}'s** uptime: {up}"
+                await msg.edit(content=cont)
+            await msg.edit(content=cont + "\n💌 | Exit")
         except discord.Forbidden:
             return
     @uptime.error
     async def uptime_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
             return
+
+    @commands.command(name="pp", help="pp") # Work in progress
+    @commands.is_owner()
+    async def pp(self, ctx):
+        def wait(m):
+            return m.content and m.author == ctx.author and m.channel == ctx.channel
+
+        try:
+            menu1 = menu(self)
+            sent_menu = await ctx.send(menu1.template())
+            while True:
+                waiting = await self.bot.wait_for('message', timeout=5, check=wait)
+                action = menu1.options.get(waiting.content.lower())
+                if action:
+                    await sent_menu.delete()
+                    await ctx.send(action())
+                else:
+                    await ctx.send(f"'{waiting.content}' is not a valid option")
+                    continue
+        except asyncio.TimeoutError:
+            await sent_menu.delete()
+            await ctx.send(menu1.timeout())
 
 def setup(bot):
     bot.add_cog(Commands(bot))
