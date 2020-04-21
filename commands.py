@@ -83,10 +83,6 @@ class Commands(commands.Cog):
             linkembed.add_field(name='`🌈 Color`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647707491169206302)', inline=True)
             linkembed.add_field(name='`🌈 Color list`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647708228406345739)', inline=True)
             linkembed.add_field(name='`🤖 Bot Paradise`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647708342785146930)', inline=True)
-            linkembed.add_field(name='`🏳️‍🌈 Gender`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647708520497807361)', inline=True)
-            linkembed.add_field(name='`🔢 Age`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647708744561590272)', inline=True)
-            linkembed.add_field(name='`❤️ Sexuality`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647708976502407179)', inline=True)
-            linkembed.add_field(name='`🔒 DM Status`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647709123323887626)', inline=True)
             linkembed.add_field(name='`🗺️ Continent`', value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647709296284663820)', inline=True)
             linkembed.add_field(name="`🏠 Squee's House Category`", value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647709461317812246)', inline=True)
 
