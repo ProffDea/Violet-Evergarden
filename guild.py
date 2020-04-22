@@ -195,7 +195,7 @@ class Settings(commands.Cog):
                                 cur.execute("SELECT owner FROM vclist;")
                                 rows = cur.fetchall()
                                 for r in rows:
-                                    if r[0] == None:
+                                    if r == None:
                                         break
                                     elif r[0] == ctx.author.id:
                                         await ctx.send(f"```py\n# Personal Voice Channel\n```\n**❗CHANNEL DENIED❗**\n\n```py\n# {ctx.author.name} already has a voice channel created\n```")
@@ -214,13 +214,111 @@ class Settings(commands.Cog):
                                     #cur.execute("SELECT * FROM vclist;")
                                     #rows = cur.fetchall()
                                     #for r in rows:
+                                    cur.execute("SELECT * FROM vclist;")
+                                    rows = cur.fetchall()
+                                    mlist = ""
+                                    num, choice, vca = [], [], []
+                                    for n, r in enumerate(rows):
+                                        if r[1] == ctx.author.id or r[1] == None:
+                                            if r[1] == None:
+                                                own = " - **NO OWNER**"
+                                            else:
+                                                own = ""
+                                            vc = self.bot.get_channel(r[0])
+                                            mlist += f"`{n + 1}.)` `{vc.name}` ({vc.id}){own}\n"
+                                            num += [str(n+1)]
+                                            choice += [vc.name]
+                                            vca += [str(vc.id)]
+                                    if mlist == "":
+                                        mlist = "No voice channels found.\n"
                                     if counter == 1:
-                                        cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\nWork in progress\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                        cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\n{mlist}\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                         msg = await ctx.send(cont)
                                     mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                     mmc = mm.content.lower()
 
-                                    if mmc == 'back':
+                                    if mmc in num or mmc in choice or mmc in vca:
+                                        if mmc in num:
+                                            pos = num.index(mmc)
+                                        if mmc in choice:
+                                            pos = choice.index(mmc)
+                                        if mmc in vca:
+                                            pos = vca.index(mmc)
+                                        vc = self.bot.get_channel(int(vca[pos]))
+                                        cur.execute("SELECT voicechl, owner FROM vclist;")
+                                        rows = cur.fetchall()
+                                        for r in rows:
+                                            if r[1] == None and r[0] == vc.id:
+                                                cur.execute(f"UPDATE vclist SET owner = '{ctx.author.id}' WHERE voicechl = '{vc.id}';")
+                                                notif = f"**{vc.name.upper()}** has been claimed by **{ctx.author.name.upper()}**\n"
+                                            else:
+                                                notif = ""
+                                        await msg.delete()
+                                        counter = 0
+                                        while True:
+                                            counter = counter + 1
+                                            if counter == 1:
+                                                cont = f"{notif}```py\n'Menu for Properties - {vc.name}\n```\n`1.)` `User Limit` - **{vc.user_limit}**\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                msg = await ctx.send(cont)
+                                            mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                            mmc = mm.content.lower()
+
+                                            if mmc == '1' or 'user limit' in mmc:
+                                                await msg.delete()
+                                                counter = 0
+                                                while True:
+                                                    counter = counter + 1
+                                                    if counter == 1:
+                                                        cont = f"```py\n'Menu for User Limit - {vc.name}\n```\nSelect a number between `0-99`\n\n```py\n# 0 is limitless users\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        msg = await ctx.send(cont)
+                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mmc = mm.content.lower()
+
+                                                    if mm.content.isdigit() == True and int(mmc) >= 0 and int(mmc) <= 99:
+                                                        await msg.delete()
+                                                        await vc.edit(user_limit=int(mmc), reason="User Limit")
+                                                        await ctx.send(f"```py\n# Properties\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit for {vc.name}: {vc.user_limit}\n```")
+                                                        return
+
+                                                    elif mmc == 'back':
+                                                        counter = 0
+                                                        await msg.delete()
+                                                        break
+
+                                                    elif mmc == 'exit':
+                                                        await msg.delete()
+                                                        await ctx.send(menuexit)
+                                                        return
+
+                                                    elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                                        await msg.delete()
+                                                        return
+
+                                                    elif mmc != 'back':
+                                                        await ctx.send("Please choose a valid option.")
+
+                                                    # End of User Limit
+
+                                            elif mmc == 'back':
+                                                counter = 0
+                                                await msg.delete()
+                                                break
+
+                                            elif mmc == 'exit':
+                                                await msg.delete()
+                                                await ctx.send(menuexit)
+                                                return
+
+                                            elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                                await msg.delete()
+                                                return
+
+                                            elif mmc != 'back':
+                                                await ctx.send("Please choose a valid option.")
+
+                                        # End of Properties
+
+                                    elif mmc == 'back':
                                         counter = 0
                                         await msg.delete()
                                         break
