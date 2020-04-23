@@ -231,5 +231,21 @@ class Commands(commands.Cog):
             await sent_menu.delete()
             await ctx.send(menu1.timeout())
 
+    @commands.command(name="Avatar", help="Gets a valid user's profile picture.")
+    async def avatar(self, ctx, *, Member: discord.Member=None):
+        try:
+            if Member == None:
+                Member = ctx.author
+            e = discord.Embed(
+                title=f"{Member}",
+                description=f"[Link]({Member.avatar_url})",
+                color=discord.Color.blue()
+            )
+            e.set_image(url=Member.avatar_url)
+            await ctx.send(embed=e)
+        except discord.Forbidden:
+            return
+
+
 def setup(bot):
     bot.add_cog(Commands(bot))

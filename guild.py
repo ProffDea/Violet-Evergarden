@@ -5,6 +5,7 @@ MissingPerm = "💌 | Missing permissions. Please make sure I have all the neces
 menuexit = '💌 | Menu has been exited.'
 menutimeout = '💌 | Menu has been exited due to timeout.'
 menuerror = '💌 | Menu has been exited due to error (menu most likely got deleted).'
+invalid = 'Please choose a valid option.'
 
 class Settings(commands.Cog):
     def __init__(self, bot):
@@ -149,8 +150,8 @@ class Settings(commands.Cog):
                                             await msg.delete()
                                             return
 
-                                        elif mmc != 'back':
-                                            await ctx.send("Please choose a valid option.")
+                                        else:
+                                            await ctx.send(invalid)
 
                                     # End of Settings for Auto Voice Channel
 
@@ -171,8 +172,8 @@ class Settings(commands.Cog):
                                 await msg.delete()
                                 return
 
-                            elif mmc != 'back':
-                                await ctx.send("Please choose a valid option.")
+                            else:
+                                await ctx.send(invalid)
 
                     # End of Menu for Auto Voice Channel
 
@@ -211,10 +212,7 @@ class Settings(commands.Cog):
                                 counter = 0
                                 while True: # Menu for Managing
                                     counter = counter + 1
-                                    #cur.execute("SELECT * FROM vclist;")
-                                    #rows = cur.fetchall()
-                                    #for r in rows:
-                                    cur.execute("SELECT * FROM vclist;")
+                                    cur.execute("SELECT * FROM vclist;") # Change this so it selects only voice channels in the guild
                                     rows = cur.fetchall()
                                     mlist = ""
                                     num, choice, vca = [], [], []
@@ -255,29 +253,94 @@ class Settings(commands.Cog):
                                                 notif = ""
                                         await msg.delete()
                                         counter = 0
-                                        while True:
+                                        while True: # Menu for Properties
                                             counter = counter + 1
                                             if counter == 1:
-                                                cont = f"{notif}```py\n'Menu for Properties - {vc.name}\n```\n`1.)` `User Limit` - **{vc.user_limit}**\n\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                cont = f"{notif}```py\n'Menu for Properties - {vc.name}'\n```\n`1.)` `Channel Name` - **{vc.name}**\n`2.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`3.)` `User Limit` - **{vc.user_limit}**\n`4.)` `Channel Position` - **{vc.position}**\n`5.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                 msg = await ctx.send(cont)
                                             mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                             mmc = mm.content.lower()
 
-                                            if mmc == '1' or 'user limit' in mmc:
+                                            if mmc == '1' or 'name' in mmc:
                                                 await msg.delete()
                                                 counter = 0
-                                                while True:
+                                                while True: # Menu for Name
                                                     counter = counter + 1
                                                     if counter == 1:
-                                                        cont = f"```py\n'Menu for User Limit - {vc.name}\n```\nSelect a number between `0-99`\n\n```py\n# 0 is limitless users\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        cont = f"```py\n'Menu for Name - {vc.name}'\n```\nEnter a `message` to be the name for the selected voice channel\n\n```py\n# Displays the user's input as the voice channel's name | Name will always be in lower case due to discord limitations\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        msg = await ctx.send(cont)
+                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mmc = mm.content.lower()
+
+                                                    if mmc == 'back':
+                                                        counter = 0
+                                                        await msg.delete()
+                                                        break
+
+                                                    elif mmc == 'exit':
+                                                        await msg.delete()
+                                                        await ctx.send(menuexit)
+                                                        return
+
+                                                    elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
+                                                        await msg.delete()
+                                                        return
+
+                                                    else:
+                                                        await msg.delete()
+                                                        await vc.edit(name=mmc, reason="Name Changed")
+                                                        await ctx.send(f"```py\n# Properties\n```\n💌 ** NAME CHANGED** 💌\n\n```py\n# new name/same id: {vc.name} ({vc.id})\n```")
+                                                        return
+
+                                                    # End of Channel Name
+
+                                            elif mmc == '2' or 'bitrate' in mmc:
+                                                await msg.delete()
+                                                counter = 0
+                                                while True: # Menu for Bitrate
+                                                    counter = counter + 1
+                                                    if counter == 1:
+                                                        cont = f"```py\n'Menu for Bitrate - {vc.name}'\n```\nSelect a number between `8000-96000`\n\n```py\n# Default for voice channels is 64000kbps | Higher number is better audio quality yet requires better internet connection vice versa\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        msg = await ctx.send(cont)
+                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mmc = mm.content.lower()
+
+                                                    if mm.content.isdigit() == True and int(mmc) >= 8000 and int(mmc) <= 96000:
+                                                        await msg.delete()
+                                                        await vc.edit(bitrate=int(mmc), reason="Bitrate Changed")
+                                                        await ctx.send(f"```py\n# Properties\n```\n💌 **BITRATE CHANGED** 💌\n\n```py\n# new bitrate for {vc.name} ({vc.id}): {vc.bitrate}\n```")
+                                                        return
+
+                                                    elif mmc == 'back':
+                                                        counter = 0
+                                                        await msg.delete()
+                                                        break
+
+                                                    elif mmc == 'exit':
+                                                        await msg.delete()
+                                                        await ctx.send(menuexit)
+                                                        return
+
+                                                    else:
+                                                        await ctx.send(invalid)
+
+                                                    # End of Bitrate
+
+                                            elif mmc == '3' or 'user limit' in mmc:
+                                                await msg.delete()
+                                                counter = 0
+                                                while True: # Menu for User Limit
+                                                    counter = counter + 1
+                                                    if counter == 1:
+                                                        cont = f"```py\n'Menu for User Limit - {vc.name}'\n```\nSelect a number between `0-99`\n\n```py\n# 0 is limitless users\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                         msg = await ctx.send(cont)
                                                     mm = await self.bot.wait_for('message', timeout=120, check=menu)
                                                     mmc = mm.content.lower()
 
                                                     if mm.content.isdigit() == True and int(mmc) >= 0 and int(mmc) <= 99:
                                                         await msg.delete()
-                                                        await vc.edit(user_limit=int(mmc), reason="User Limit")
-                                                        await ctx.send(f"```py\n# Properties\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit for {vc.name}: {vc.user_limit}\n```")
+                                                        await vc.edit(user_limit=int(mmc), reason="User Limit Changed")
+                                                        await ctx.send(f"```py\n# Properties\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit for {vc.name} ({vc.id}): {vc.user_limit}\n```")
                                                         return
 
                                                     elif mmc == 'back':
@@ -294,10 +357,62 @@ class Settings(commands.Cog):
                                                         await msg.delete()
                                                         return
 
-                                                    elif mmc != 'back':
-                                                        await ctx.send("Please choose a valid option.")
+                                                    else:
+                                                        await ctx.send(invalid)
 
                                                     # End of User Limit
+
+                                            elif mmc == '4' or 'position' in mmc:
+                                                await msg.delete()
+                                                counter = 0
+                                                while True: # Menu for Position
+                                                    counter = counter + 1
+                                                    if counter == 1:
+                                                        cont = f"```py\n'Menu for Position - {vc.name}'\n```\nWork in progress\n\n```py\n# \n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        msg = await ctx.send(cont)
+                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mmc = mm.content.lower()
+
+                                                    if mmc == 'back':
+                                                        counter = 0
+                                                        await msg.delete()
+                                                        break
+
+                                                    elif mmc == 'exit':
+                                                        await msg.delete()
+                                                        await ctx.send(menuexit)
+                                                        return
+
+                                                    else:
+                                                        await ctx.send(invalid)
+
+                                                # End of Position
+
+                                            elif mmc == '5' or 'overwrite' in mmc or 'permission' in mmc:
+                                                await msg.delete()
+                                                counter = 0
+                                                while True: # Menu for Overwrite Permissions
+                                                    counter = counter + 1
+                                                    if counter == 1:
+                                                        cont = f"```py\n'Menu for Overwrite Permissions - {vc.name}'\n```\nWork in progress\n\n```py\n# \n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        msg = await ctx.send(cont)
+                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mmc = mm.content.lower()
+
+                                                    if mmc == 'back':
+                                                        counter = 0
+                                                        await msg.delete()
+                                                        break
+
+                                                    elif mmc == 'exit':
+                                                        await msg.delete()
+                                                        await ctx.send(menuexit)
+                                                        return
+
+                                                    else:
+                                                        await ctx.send(invalid)
+
+                                                # End of Overwrite Permissions
 
                                             elif mmc == 'back':
                                                 counter = 0
@@ -313,8 +428,8 @@ class Settings(commands.Cog):
                                                 await msg.delete()
                                                 return
 
-                                            elif mmc != 'back':
-                                                await ctx.send("Please choose a valid option.")
+                                            else:
+                                                await ctx.send(invalid)
 
                                         # End of Properties
 
@@ -332,8 +447,8 @@ class Settings(commands.Cog):
                                         await msg.delete()
                                         return
 
-                                    elif mmc != 'back':
-                                        await ctx.send("Please choose a valid option.")
+                                    else:
+                                        await ctx.send(invalid)
 
                                     # End of Managing for Personal Voice Channel
 
@@ -351,8 +466,8 @@ class Settings(commands.Cog):
                                 await msg.delete()
                                 return
 
-                            elif mmc != 'back':
-                                await ctx.send("Please choose a valid option.")
+                            else:
+                                await ctx.send(invalid)
 
                         # End of Menu for Personal Voice Channel
                     
@@ -365,8 +480,8 @@ class Settings(commands.Cog):
                         await msg.delete()
                         return
 
-                    elif mmc != 'exit':
-                        await ctx.send("Please choose a valid option.")
+                    else:
+                        await ctx.send(invalid)
 
                     # End of Menu for User
 
