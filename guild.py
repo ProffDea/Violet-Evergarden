@@ -203,7 +203,7 @@ class Settings(commands.Cog):
                                         return
                                 vc = await ctx.guild.create_voice_channel(name=f"💌{ctx.author.name}")
                                 cur.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vc.id}', '{ctx.author.id}', '1', 'f')")
-                                cont = f"```py\n# Personal Voice Channel\n```\n💌 **CHANNEL CREATED** 💌\n\n```py\n# name/id: {vc.name} ({vc.id})\n```"
+                                cont = f"```py\n# Personal Voice Channel\n```\n💌 **CHANNEL CREATED** 💌\n\n```py\n# name / id: {vc.name} / {vc.id}\n```"
                                 msg = await ctx.send(cont)
                                 return
 
@@ -289,7 +289,7 @@ class Settings(commands.Cog):
                                                     else:
                                                         await msg.delete()
                                                         await vc.edit(name=mmc, reason="Name Changed")
-                                                        await ctx.send(f"```py\n# Properties\n```\n💌 ** NAME CHANGED** 💌\n\n```py\n# new name/same id: {vc.name} ({vc.id})\n```")
+                                                        await ctx.send(f"```py\n# Properties - {vc.name} | {vc.id}\n```\n💌 ** NAME CHANGED** 💌\n\n```py\n# new name: {vc.name}\n```")
                                                         return
 
                                                     # End of Channel Name
@@ -308,7 +308,7 @@ class Settings(commands.Cog):
                                                     if mm.content.isdigit() == True and int(mmc) >= 8000 and int(mmc) <= 96000:
                                                         await msg.delete()
                                                         await vc.edit(bitrate=int(mmc), reason="Bitrate Changed")
-                                                        await ctx.send(f"```py\n# Properties\n```\n💌 **BITRATE CHANGED** 💌\n\n```py\n# new bitrate for {vc.name} ({vc.id}): {vc.bitrate}\n```")
+                                                        await ctx.send(f"```py\n# Properties - {vc.name} | {vc.id}\n```\n💌 **BITRATE CHANGED** 💌\n\n```py\n# new bitrate: {vc.bitrate}\n```")
                                                         return
 
                                                     elif mmc == 'back':
@@ -340,7 +340,7 @@ class Settings(commands.Cog):
                                                     if mm.content.isdigit() == True and int(mmc) >= 0 and int(mmc) <= 99:
                                                         await msg.delete()
                                                         await vc.edit(user_limit=int(mmc), reason="User Limit Changed")
-                                                        await ctx.send(f"```py\n# Properties\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit for {vc.name} ({vc.id}): {vc.user_limit}\n```")
+                                                        await ctx.send(f"```py\n# Properties - {vc.name} | {vc.id}\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit : {vc.user_limit}\n```")
                                                         return
 
                                                     elif mmc == 'back':
@@ -401,6 +401,7 @@ class Settings(commands.Cog):
                                                         return
 
                                                     elif mmc in num or mmc in cname or mmc in cid or mmc == 'skip' or mmc == 'none' and empty == False:
+                                                        await msg.delete()
                                                         if mmc in num or mmc in cname or mmc in cid:
                                                             if mmc in num:
                                                                 pos = num.index(mmc)
@@ -413,12 +414,27 @@ class Settings(commands.Cog):
                                                         elif mmc == 'none':
                                                             catchl = None
                                                             await vc.edit(category=catchl, reason="Moving out of Category")
-                                                        await msg.delete()
                                                         counter = 0
                                                         while True: # Menu for Position
                                                             counter = counter + 1
+                                                            posvc = ""
+                                                            num, vname, vid = [], [], []
+                                                            if vc.category == None:
+                                                                for n, p in enumerate(ctx.guild.voice_channels):
+                                                                    if p.category == None:
+                                                                        posvc += f"`{n + 1}.)` Position **{p.position}** - `{p.name}` `:` `{p.id}`\n"
+                                                                        num += [str(n + 1)]
+                                                                        vname += [p.name]
+                                                                        vid += [str(p.id)]
+                                                            else:
+                                                                for n, p in enumerate(vc.category.voice_channels):
+                                                                    posvc += f"`{n + 1}.)` Position **{p.position}** - `{p.name}` `:` `{p.id}`\n"
+                                                                    num += [str(n + 1)]
+                                                                    vname += [p.name]
+                                                                    vid += [str(p.id)]
                                                             if counter == 1:
-                                                                cont = f"```py\n'Menu for Position - {vc.name}'\n```\nWork in progress\n\n```py\n# \n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                                pnumb = f"`{str(int(num[-1]) + 1)}.)` Select this position to go below **{vname[-1]}** (Does not want to work)"
+                                                                cont = f"```py\n'Menu for Position - {vc.name}'\n```\nChoose a **channel's** position to be on top of them\n\n{posvc}{pnumb}\n```py\n# Position number is the channel's current position in the category\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                                 msg = await ctx.send(cont)
                                                             mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                                             mmc = mm.content.lower()
@@ -431,6 +447,24 @@ class Settings(commands.Cog):
                                                             elif mmc == 'exit':
                                                                 await msg.delete()
                                                                 await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
+                                                                return
+
+                                                            elif mmc in num or mmc in vname or mmc in vid or mmc == str(len(num) + 1):
+                                                                await msg.delete()
+                                                                if mmc in num or mmc in vname or mmc in vid:
+                                                                    if mmc in num:
+                                                                        pos = num.index(mmc)
+                                                                    elif mmc in vname:
+                                                                        pos = vname.index(mmc)
+                                                                    elif mmc in vid:
+                                                                        pos = vid.index(mmc)
+                                                                    newpos = 0
+                                                                    pvc = self.bot.get_channel(int(vid[pos]))
+                                                                elif mmc == str(len(num) + 1):
+                                                                    newpos = 1
+                                                                    pvc = self.bot.get_channel(int(vid[-1]))
+                                                                await vc.edit(position=pvc.position + newpos, reason="Moving Channel")
+                                                                await ctx.send(f"```py\n# Properties - {vc.name} | {vc.id}\n```\n💌 **CHANNEL MOVED** 💌\n\n```py\n# new category / position: {vc.category.name} / {vc.position}\n```")
                                                                 return
 
                                                             else:
@@ -542,7 +576,7 @@ class Settings(commands.Cog):
 
             except asyncio.TimeoutError:
                 await msg.delete()
-                await ctx.send(f"💌 | {ctx.author.mention}" + menutimeout)
+                await ctx.send(f"💌 | {ctx.author.mention} " + menutimeout)
             finally:
                 conn.commit()
                 cur.close()
@@ -550,7 +584,7 @@ class Settings(commands.Cog):
     @vc.error
     async def vc_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(f"💌 | {ctx.author.mention}" + menuerror)
+            await ctx.send(f"💌 | {ctx.author.mention} " + menuerror)
             raise error
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(error)
