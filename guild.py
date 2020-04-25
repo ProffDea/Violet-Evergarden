@@ -2,9 +2,9 @@ import asyncio, discord, os, psycopg2
 from discord.ext import commands
 
 MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Add Reactions`, `Connect`, `Move Members`"
-menuexit = '💌 | Menu has been exited.'
-menutimeout = '💌 | Menu has been exited due to timeout.'
-menuerror = '💌 | Menu has been exited due to error (menu most likely got deleted).'
+menuexit = 'menu has been exited.'
+menutimeout = 'menu has been exited due to timeout.'
+menuerror = 'menu has been exited due to error (menu most likely got deleted).'
 invalid = 'Please choose a valid option.'
 
 class Settings(commands.Cog):
@@ -90,7 +90,7 @@ class Settings(commands.Cog):
                                 break
                         cont = f"```py\n'Menu for User' - {ctx.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {value}{grant}\n`2.)` `Personal Voice Channel`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
                         msg = await ctx.send(cont)
-                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                     mmc = mm.content.lower()
 
                     if mmc == '1' and mc == True or 'auto' in mmc and mc == True:
@@ -105,7 +105,7 @@ class Settings(commands.Cog):
                                     option = f" |`💌`| Type **none** to __remove `{value}`__"
                                 cont = f"```py\n'Menu for Auto Voice Channel' - {value}{valueid}\n```\nPlease enter a voice channel{option}\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                 msg = await ctx.send(cont)
-                            mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                            mm = await self.bot.wait_for('message', timeout=60, check=menu)
                             mmc = mm.content.lower()
                             back = 0
                             for chan in ctx.guild.channels:
@@ -125,7 +125,7 @@ class Settings(commands.Cog):
                                         if counter == 1:
                                             cont = f"```py\n'Menu for Auto Voice Channel (Continued)' - {value}{valueid}\n```\n`{place}` Selected |`💌`| Type **confirm** to __save settings__\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                             msg = await ctx.send(cont)
-                                        mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                        mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                         mmc = mm.content.lower()
 
                                         if mmc == 'confirm':
@@ -143,7 +143,7 @@ class Settings(commands.Cog):
 
                                         elif mmc == 'exit':
                                             await msg.delete()
-                                            await ctx.send(menuexit)
+                                            await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                             return
 
                                         elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -165,7 +165,7 @@ class Settings(commands.Cog):
 
                             elif mmc == 'exit':
                                 await msg.delete()
-                                await ctx.send(menuexit)
+                                await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                 return
 
                             elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -188,7 +188,7 @@ class Settings(commands.Cog):
                             if counter == 1:
                                 cont = "```py\n'Menu for Personal Voice Channel'\n```\n`1.)` `Create voice channel`\n`2.)` `Manage voice channels`\n\n```py\n# Personal voice channels are channels made for server members to edit to their heart's content\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                 msg = await ctx.send(cont)
-                            mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                            mm = await self.bot.wait_for('message', timeout=60, check=menu)
                             mmc = mm.content.lower()
 
                             if mmc == '1' or 'create' in mmc:
@@ -223,7 +223,7 @@ class Settings(commands.Cog):
                                             else:
                                                 own = ""
                                             vc = self.bot.get_channel(r[0])
-                                            mlist += f"`{n + 1}.)` `{vc.name}` ({vc.id}){own}\n"
+                                            mlist += f"`{n + 1}.)` **`{vc.name}`** `:` `{vc.id}`{own}\n"
                                             num += [str(n+1)]
                                             choice += [vc.name]
                                             vca += [str(vc.id)]
@@ -232,15 +232,15 @@ class Settings(commands.Cog):
                                     if counter == 1:
                                         cont = f"```py\n'Menu for Personal Voice Channel - Manage Voice Channels'\n```\n{mlist}\n```py\n# Change properties of voice channels that are owned by {ctx.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                         msg = await ctx.send(cont)
-                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                     mmc = mm.content.lower()
 
                                     if mmc in num or mmc in choice or mmc in vca:
                                         if mmc in num:
                                             pos = num.index(mmc)
-                                        if mmc in choice:
+                                        elif mmc in choice:
                                             pos = choice.index(mmc)
-                                        if mmc in vca:
+                                        elif mmc in vca:
                                             pos = vca.index(mmc)
                                         vc = self.bot.get_channel(int(vca[pos]))
                                         cur.execute("SELECT voicechl, owner FROM vclist;")
@@ -256,9 +256,9 @@ class Settings(commands.Cog):
                                         while True: # Menu for Properties
                                             counter = counter + 1
                                             if counter == 1:
-                                                cont = f"{notif}```py\n'Menu for Properties - {vc.name}'\n```\n`1.)` `Channel Name` - **{vc.name}**\n`2.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`3.)` `User Limit` - **{vc.user_limit}**\n`4.)` `Channel Position` - **{vc.position}**\n`5.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                cont = f"{notif}```py\n'Menu for Properties - {vc.name}'\n```\n`1.)` `Channel Name` - **{vc.name}**\n`2.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`3.)` `User Limit` - **{vc.user_limit}**\n`4.)` `Category` `/` `Position` - **{vc.category}** / **{vc.position}**\n`5.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                 msg = await ctx.send(cont)
-                                            mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                            mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                             mmc = mm.content.lower()
 
                                             if mmc == '1' or 'name' in mmc:
@@ -269,7 +269,7 @@ class Settings(commands.Cog):
                                                     if counter == 1:
                                                         cont = f"```py\n'Menu for Name - {vc.name}'\n```\nEnter a `message` to be the name for the selected voice channel\n\n```py\n# Displays the user's input as the voice channel's name | Name will always be in lower case due to discord limitations\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                         msg = await ctx.send(cont)
-                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                                     mmc = mm.content.lower()
 
                                                     if mmc == 'back':
@@ -279,7 +279,7 @@ class Settings(commands.Cog):
 
                                                     elif mmc == 'exit':
                                                         await msg.delete()
-                                                        await ctx.send(menuexit)
+                                                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                                         return
 
                                                     elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -302,7 +302,7 @@ class Settings(commands.Cog):
                                                     if counter == 1:
                                                         cont = f"```py\n'Menu for Bitrate - {vc.name}'\n```\nSelect a number between `8000-96000`\n\n```py\n# Default for voice channels is 64000kbps | Higher number is better audio quality yet requires better internet connection vice versa\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                         msg = await ctx.send(cont)
-                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                                     mmc = mm.content.lower()
 
                                                     if mm.content.isdigit() == True and int(mmc) >= 8000 and int(mmc) <= 96000:
@@ -318,7 +318,7 @@ class Settings(commands.Cog):
 
                                                     elif mmc == 'exit':
                                                         await msg.delete()
-                                                        await ctx.send(menuexit)
+                                                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                                         return
 
                                                     else:
@@ -334,7 +334,7 @@ class Settings(commands.Cog):
                                                     if counter == 1:
                                                         cont = f"```py\n'Menu for User Limit - {vc.name}'\n```\nSelect a number between `0-99`\n\n```py\n# 0 is limitless users\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                         msg = await ctx.send(cont)
-                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                                     mmc = mm.content.lower()
 
                                                     if mm.content.isdigit() == True and int(mmc) >= 0 and int(mmc) <= 99:
@@ -350,7 +350,7 @@ class Settings(commands.Cog):
 
                                                     elif mmc == 'exit':
                                                         await msg.delete()
-                                                        await ctx.send(menuexit)
+                                                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                                         return
 
                                                     elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -365,12 +365,29 @@ class Settings(commands.Cog):
                                             elif mmc == '4' or 'position' in mmc:
                                                 await msg.delete()
                                                 counter = 0
-                                                while True: # Menu for Position
+                                                while True: # Menu for Category
                                                     counter = counter + 1
+                                                    extra = ""
+                                                    cat = ""
+                                                    option = "💌 Enter 'skip' to move on to positions\n"
+                                                    empty = False
+                                                    num, cname, cid = [], [], []
+                                                    for n, g in enumerate(ctx.guild.categories):
+                                                        cat += f"`{n + 1}.)` **`{g.name}`** `:` `{g.id}`\n"
+                                                        num += [str(n + 1)]
+                                                        cname += [g.name]
+                                                        cid += [str(g.id)]
+                                                    if cat == "":
+                                                        cat += "There are currently no **categories** in this server\n"
+                                                        empty = True
+                                                    else:
+                                                        extra += "Please select a **category** for the voice channel to be in\n\n"
+                                                        if vc.category != None:
+                                                            option += "💌 Enter 'none' to make the voice channel have no category\n"
                                                     if counter == 1:
-                                                        cont = f"```py\n'Menu for Position - {vc.name}'\n```\nWork in progress\n\n```py\n# \n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                        cont = f"```py\n'Menu for Position - {vc.name}'\n```\n{extra}{cat}\n```py\n# A category is a group of channels that is usually related to said category\n{option}💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                         msg = await ctx.send(cont)
-                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                                     mmc = mm.content.lower()
 
                                                     if mmc == 'back':
@@ -380,13 +397,51 @@ class Settings(commands.Cog):
 
                                                     elif mmc == 'exit':
                                                         await msg.delete()
-                                                        await ctx.send(menuexit)
+                                                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                                         return
+
+                                                    elif mmc in num or mmc in cname or mmc in cid or mmc == 'skip' or mmc == 'none' and empty == False:
+                                                        if mmc in num or mmc in cname or mmc in cid:
+                                                            if mmc in num:
+                                                                pos = num.index(mmc)
+                                                            elif mmc in cname:
+                                                                pos = cname.index(mmc)
+                                                            elif mmc in cid:
+                                                                pos = cid.index(mmc)
+                                                            catchl = self.bot.get_channel(int(cid[pos]))
+                                                            await vc.edit(category=catchl, reason="Moving to Category")
+                                                        elif mmc == 'none':
+                                                            catchl = None
+                                                            await vc.edit(category=catchl, reason="Moving out of Category")
+                                                        await msg.delete()
+                                                        counter = 0
+                                                        while True: # Menu for Position
+                                                            counter = counter + 1
+                                                            if counter == 1:
+                                                                cont = f"```py\n'Menu for Position - {vc.name}'\n```\nWork in progress\n\n```py\n# \n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                                                                msg = await ctx.send(cont)
+                                                            mm = await self.bot.wait_for('message', timeout=60, check=menu)
+                                                            mmc = mm.content.lower()
+
+                                                            if mmc == 'back':
+                                                                counter = 0
+                                                                await msg.delete()
+                                                                break
+                                                            
+                                                            elif mmc == 'exit':
+                                                                await msg.delete()
+                                                                await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
+                                                                return
+
+                                                            else:
+                                                                await ctx.send(invalid)
+
+                                                            # End of position
 
                                                     else:
                                                         await ctx.send(invalid)
 
-                                                # End of Position
+                                                # End of Category
 
                                             elif mmc == '5' or 'overwrite' in mmc or 'permission' in mmc:
                                                 await msg.delete()
@@ -396,7 +451,7 @@ class Settings(commands.Cog):
                                                     if counter == 1:
                                                         cont = f"```py\n'Menu for Overwrite Permissions - {vc.name}'\n```\nWork in progress\n\n```py\n# \n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                                                         msg = await ctx.send(cont)
-                                                    mm = await self.bot.wait_for('message', timeout=120, check=menu)
+                                                    mm = await self.bot.wait_for('message', timeout=60, check=menu)
                                                     mmc = mm.content.lower()
 
                                                     if mmc == 'back':
@@ -406,7 +461,7 @@ class Settings(commands.Cog):
 
                                                     elif mmc == 'exit':
                                                         await msg.delete()
-                                                        await ctx.send(menuexit)
+                                                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                                         return
 
                                                     else:
@@ -421,7 +476,7 @@ class Settings(commands.Cog):
 
                                             elif mmc == 'exit':
                                                 await msg.delete()
-                                                await ctx.send(menuexit)
+                                                await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                                 return
 
                                             elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -440,7 +495,7 @@ class Settings(commands.Cog):
 
                                     elif mmc == 'exit':
                                         await msg.delete()
-                                        await ctx.send(menuexit)
+                                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                         return
 
                                     elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -459,7 +514,7 @@ class Settings(commands.Cog):
 
                             elif mmc == 'exit':
                                 await msg.delete()
-                                await ctx.send(menuexit)
+                                await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                                 return
 
                             elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -473,7 +528,7 @@ class Settings(commands.Cog):
                     
                     elif mmc == 'exit':
                         await msg.delete()
-                        await ctx.send(menuexit)
+                        await ctx.send(f"💌 | {ctx.author.mention}'s " + menuexit)
                         return
                     
                     elif mm.content == f'{fix}vc' or mm.content == f'{fix}VC' or mm.content == f'{fix}Vc' or mm.content == f'{fix}vC':
@@ -487,7 +542,7 @@ class Settings(commands.Cog):
 
             except asyncio.TimeoutError:
                 await msg.delete()
-                await ctx.send(menutimeout)
+                await ctx.send(f"💌 | {ctx.author.mention}" + menutimeout)
             finally:
                 conn.commit()
                 cur.close()
@@ -495,7 +550,7 @@ class Settings(commands.Cog):
     @vc.error
     async def vc_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(menuerror)
+            await ctx.send(f"💌 | {ctx.author.mention}" + menuerror)
             raise error
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(error)
