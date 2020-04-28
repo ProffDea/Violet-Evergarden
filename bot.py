@@ -22,8 +22,10 @@ def cstmprefix(bot, msg):
             conn.close()
             return commands.when_mentioned_or(vprefix)(bot, msg)
 
-helpmsg = "Please make sure I have all the necessary permissions to properly work!\nPermissions such as:\nManage Channels, Read Text Channels & See Voice Channels, Send Messages, Manage Messages, Use External Emojis, Add Reactions, Connect, Move Members"
-bot = commands.Bot(command_prefix=cstmprefix, description=helpmsg, case_insensitive=True)
+def miss_permission():
+    return "Please make sure I have all the necessary permissions to properly work!\nPermissions such as:\nManage Channels, Read Text Channels & See Voice Channels, Send Messages, Manage Messages, Use External Emojis, Add Reactions, Connect, Move Members"
+
+bot = commands.Bot(command_prefix=cstmprefix, description=miss_permission(), case_insensitive=True)
 
 initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
 if __name__ == '__main__':
