@@ -1,7 +1,8 @@
 import json, os, psycopg2
 from discord.ext import commands
 
-TestServerEmoji = "<:IDontKnowThatCommand:676544628274757633>" # Emoji is from the test server. Anime girl with question marks.
+def TestServerEmoji():
+    return "<:IDontKnowThatCommand:676544628274757633>" # Emoji is from the test server. Anime girl with question marks.
 
 class Events(commands.Cog):
     def __init__(self, bot):
@@ -40,7 +41,7 @@ class Events(commands.Cog):
         if hasattr(ctx.command, 'on_error'):
             return
         elif isinstance(error, commands.CommandNotFound):
-            await ctx.send(TestServerEmoji)
+            await ctx.send(TestServerEmoji())
             return
         elif isinstance(error, commands.NoPrivateMessage):
             await ctx.send(f"**{ctx.command}** can not be used in DMs.")

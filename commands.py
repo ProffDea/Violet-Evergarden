@@ -1,8 +1,7 @@
 import discord, os, psycopg2, datetime, time, asyncio, __main__
 from discord.ext import commands
-from menu import menu
+from guild import menu
 
-MissingPerm = MissingPerm = "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Add Reactions`, `Connect`, `Move Members`"
 ft = time.time()
 
 class Commands(commands.Cog):
@@ -19,7 +18,7 @@ class Commands(commands.Cog):
             print(f"{self.bot.user.name} has went offline.")
         except discord.Forbidden:
             try:
-                await ctx.send(MissingPerm)
+                await ctx.send(menu.miss_permission(self))
             except discord.Forbidden:
                 return
 
@@ -133,12 +132,12 @@ class Commands(commands.Cog):
                     await ctx.send("I'm already in a VC!")
             except TimeoutError:
                 try:
-                    ctx.send(MissingPerm)
+                    ctx.send(menu.miss_permission(self))
                 except discord.Forbidden:
                     return
         except discord.Forbidden:
             try:
-                await ctx.send(MissingPerm)
+                await ctx.send(menu.miss_permission(self))
             except discord.Forbidden:
                 return
     @commands.command(name='Leave', help='Has the bot leave the vc. Mainly for testing purposes.')
@@ -152,7 +151,7 @@ class Commands(commands.Cog):
                     await ctx.send("I'm not in a VC!")
         except discord.Forbidden:
             try:
-                await ctx.send(MissingPerm)
+                await ctx.send(menu.miss_permission(self))
             except discord.Forbidden:
                 return
 
@@ -209,27 +208,6 @@ class Commands(commands.Cog):
         if isinstance(error, commands.CommandInvokeError):
             return
 
-    @commands.command(name="pp", help="pp") # Work in progress
-    @commands.is_owner()
-    async def pp(self, ctx):
-        def wait(m):
-            return m.content and m.author == ctx.author and m.channel == ctx.channel
-
-        try:
-            menu1 = menu(self)
-            sent_menu = await ctx.send(menu1.template())
-            while True:
-                waiting = await self.bot.wait_for('message', timeout=5, check=wait)
-                action = menu1.options.get(waiting.content.lower())
-                if action:
-                    await sent_menu.delete()
-                    await ctx.send(action())
-                else:
-                    await ctx.send(f"'{waiting.content}' is not a valid option")
-                    continue
-        except asyncio.TimeoutError:
-            await sent_menu.delete()
-            await ctx.send(menu1.timeout())
 
     @commands.command(name="Avatar", help="Gets a valid user's profile picture.")
     async def avatar(self, ctx, *, Member: discord.Member=None):
