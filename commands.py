@@ -164,6 +164,12 @@ class Commands(commands.Cog):
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
             cur =conn.cursor()
+            cur.execute(f"SELECT status FROM members WHERE user_id = '{ctx.author.id}';")
+            rows = cur.fetchall()
+            for r in rows:
+                if r[0] == False:
+                    await ctx.send("You have been blacklisted from using this command.")
+                    return
             if changestatus == None:
                 cur.execute("UPDATE bot SET message = '' WHERE name = 'Status';")
                 conn.commit()
@@ -224,6 +230,31 @@ class Commands(commands.Cog):
         except discord.Forbidden:
             return
 
+    @commands.command(name='Blacklist', help="Prevents specific user by ID from using a specific command.")
+    @commands.is_owner()
+    async def blacklist(self, ctx, ID, Name):
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
+        finally:
+            cur = conn.cursor()
+            try:
+                try:
+                    if Name.lower() == 'status':
+                        member = self.bot.get_user(int(ID))
+                        cur.execute(f"INSERT INTO members (user_id, status) VALUES ('{member.id}', FALSE) ON CONFLICT (user_id) DO UPDATE SET status = 'FALSE';")
+                        await ctx.send(f"**{member.name}** has been blacklisted from using the **{Name.lower()}** command.")
+                    else:
+                        await ctx.send("Invalid command name. Current valid command names: status")
+                except ValueError:
+                    await ctx.send("User ID is required.")
+            except AttributeError:
+                await ctx.send("Member could not be found.")
+            conn.commit()
+            cur.close()
+            conn.close()
 
 def setup(bot):
     bot.add_cog(Commands(bot))
