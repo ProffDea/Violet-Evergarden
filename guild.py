@@ -10,14 +10,14 @@ class Settings(commands.Cog):
     @commands.command(name='Prefix', help='Allows to change the default prefix to a custom one.')
     @commands.guild_only()
     async def prefix(self, ctx, *, changeprefix=None):
-        try: # Catches keyerror
+        try:
             DATABASE_URL = os.environ['DATABASE_URL']
             conn = psycopg2.connect(DATABASE_URL, sslmode='require')
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
             cur = conn.cursor()
-            try: # Catches forbidden
+            try:
                 if ctx.channel.permissions_for(ctx.author).manage_guild == True and changeprefix != None:
                     if len(changeprefix) <= 9:
                         cur.execute(f"UPDATE servers SET prefix = '{changeprefix}' WHERE guild = '{ctx.guild.id}';")
@@ -83,33 +83,33 @@ class menu:
         return 'Please choose a valid option.'
 
     async def user(self, context, cursor):
-        def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
-        counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        while True:
-            counter = counter + 1
-            perms = context.channel.permissions_for(context.author)
-            manage = perms.manage_channels
-            if manage == True:
-                access = ""
-            elif manage == False:
-                access = " - **Access Denied**"
-            if counter == 1:
-                cursor.execute(f"SELECT autovc FROM servers WHERE guild = '{context.guild.id}';")
-                rows = cursor.fetchall()
-                for r in rows:
-                    if r[0] == None:
-                        auto_name = 'None'
-                        break
-                    else:
-                        get_chl = self.bot.get_channel(r[0])
+        def verify(v): 
+            return v.content and v.author == context.author and v.channel == context.channel 
+        counter = 0 
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'") 
+        rows = cursor.fetchall() 
+        for r in rows: 
+            prefix = r[0] 
+        while True: 
+            counter = counter + 1  
+            perms = context.channel.permissions_for(context.author)  
+            manage = perms.manage_channels  
+            if manage == True:  
+                access = ""  
+            elif manage == False:  
+                access = " - **Access Denied**"  
+            if counter == 1:  
+                cursor.execute(f"SELECT autovc FROM servers WHERE guild = '{context.guild.id}';")  
+                rows = cursor.fetchall() 
+                for r in rows: 
+                    if r[0] == None: 
+                        auto_name = 'None' 
+                        break 
+                    else: 
+                        get_chl = self.bot.get_channel(r[0]) 
                         auto_name = get_chl.name
                         break
-                content = f"```py\n'Menu for User' - {context.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {auto_name}{access}\n`2.)` `Personal Voice Channel`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
+                content = f"```py\n'Menu for User' - {context.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {auto_name}{access}\n`2.)` `Personal Voice Channel`\n`3.)` `User Settings`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -125,9 +125,13 @@ class menu:
                     await msg.delete()
                     await menu.auto(self, context, cursor)
                     return
-                elif wfc == '2' or 'manage' in wfc:
+                elif wfc == '2' or 'personal' in wfc:
                     await msg.delete()
                     await menu.personal(self, context, cursor)
+                    return
+                elif wfc == '3' or 'user' in wfc or 'setting' in wfc:
+                    await msg.delete()
+                    await menu.user_settings(self, context, cursor)
                     return
                 else:
                     await context.send(menu.invalid(self))
@@ -251,7 +255,7 @@ class menu:
                 await context.send(f"```py\n# Personal Voice Channel\n```\n**❗CHANNEL DENIED❗**\n\n```py\n# {context.author.name} already has a voice channel created\n```")
                 return
         vc = await context.guild.create_voice_channel(name=f"💌{context.author.name}")
-        cursor.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vc.id}', '{context.author.id}', '1', 'f')")
+        cursor.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vc.id}', '{context.author.id}', '1', 'f');")
         content = f"```py\n# {context.author.name} | Personal Voice Channel\n```\n💌 **CHANNEL CREATED** 💌\n\n```py\n# name / id: {vc.name} / {vc.id}\n```"
         await context.send(content)
         await menu.confirm(self, context, cursor, vc.id)
@@ -658,7 +662,7 @@ class menu:
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `done` to finish or enter `back` to change more settings"
+                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `back` to change more settings or enter `done` to finish"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -670,6 +674,40 @@ class menu:
                 elif wfc == 'back':
                     await msg.delete()
                     await menu.properties(self, context, cursor, channel)
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                else:
+                    await context.send(menu.invalid(self))
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def user_settings(self, context, cursor):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'User Settings' - {context.author.name}\n```\nWork in progress\n\n```py\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.user(self, context, cursor)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
                     return
                 elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
                     await msg.delete()
