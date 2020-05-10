@@ -1,8 +1,6 @@
 import asyncio, discord, os, psycopg2
 from discord.ext import commands
 
-invalid = 'Please choose a valid option.'
-
 class Settings(commands.Cog):
     def __init__(self, bot):
             self.bot = bot
@@ -342,7 +340,11 @@ class menu:
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"{notif}```py\n'Menu for Properties' - {vc.name}\n```\n`1.)` `Channel Name` - **{vc.name}**\n`2.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`3.)` `User Limit` - **{vc.user_limit}**\n`4.)` `Channel Position` - **{vc.position}**\n`5.)` `Channel Category` - **{vc.category}**\n`6.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                cursor.execute(f"SELECT static FROM vclist WHERE voicechl = '{vc.id}';")
+                rows = cursor.fetchall()
+                for r in rows:
+                    static = r[0]
+                content = f"{notif}```py\n'Menu for Properties' - {vc.name}\n```\n`1.)` `Permanent Channel` - **{static}**\n`2.)` `Channel Name` - **{vc.name}**\n`3.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`4.)` `User Limit` - **{vc.user_limit}**\n`5.)` `Channel Position` - **{vc.position}**\n`6.)` `Channel Category` - **{vc.category}**\n`7.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -358,29 +360,33 @@ class menu:
                 elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
                     await msg.delete()
                     return
-                elif wfc == '1' or 'name' in wfc:
+                elif wfc == '1' or 'permanent' in wfc:
+                    await msg.delete()
+                    await menu.permanent(self, context, cursor, channel)
+                    return
+                elif wfc == '2' or 'name' in wfc:
                     await msg.delete()
                     await menu.name(self, context, cursor, channel)
                     return
-                elif wfc == '2' or 'bitrate' in wfc:
+                elif wfc == '3' or 'bitrate' in wfc:
                     await msg.delete()
                     await menu.bitrate(self, context, cursor, channel)
                     return
-                elif wfc == '3' or 'user limit' in wfc:
+                elif wfc == '4' or 'user limit' in wfc:
                     await msg.delete()
                     await menu.user_limit(self, context, cursor, channel)
                     return
-                elif wfc == '4' or 'position' in wfc:
+                elif wfc == '5' or 'position' in wfc:
                     await msg.delete()
                     await menu.position(self, context, cursor, channel)
                     return
-                elif wfc == '5' or 'category' in wfc:
+                elif wfc == '6' or 'category' in wfc:
                     await msg.delete()
                     await menu.category(self, context, cursor, channel)
                     return
-                elif wfc == '6' or 'overwrite' in wfc or 'permission' in wfc:
+                elif wfc == '7' or 'overwrite' in wfc or 'permission' in wfc:
                     await msg.delete()
-                    await context.send("Work in progresss")
+                    await menu.overwrite(self, context, cursor, channel)
                     return
                 else:
                     await context.send(menu.invalid(self))
@@ -388,6 +394,23 @@ class menu:
                 await msg.delete()
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
+
+    async def permanent(self, context, cursor, channel):
+        vc = self.bot.get_channel(channel)
+        cursor.execute(f"SELECT static FROM vclist WHERE voicechl = '{vc.id}';")
+        rows = cursor.fetchall()
+        for r in rows:
+            static = r[0]
+        if static == True:
+            change = "CHANNEL NO LONGER PERMANENT"
+            tip = "Channel will be deleted when no members are present"
+            cursor.execute(f"UPDATE vclist SET static = 'FALSE' WHERE voicechl = '{vc.id}';")
+        elif static == False:
+            change = "CHANNEL NOW PERMANENT"
+            tip = "Channel will NOT be deleted when no members are present"
+            cursor.execute(f"UPDATE vclist SET static = 'TRUE' WHERE voicechl = '{vc.id}';")
+        await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **{change}** 💌\n\n```py\n# {tip}\n```")
+        await menu.confirm(self, context, cursor, channel)
 
     async def name(self, context, cursor, channel):
         def verify(v):
@@ -420,7 +443,7 @@ class menu:
                 else:
                     await msg.delete()
                     await vc.edit(name=wfc, reason="Name Changed")
-                    await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 ** NAME CHANGED** 💌\n\n```py\n# new name: {vc.name}\n```")
+                    await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **NAME CHANGED** 💌\n\n```py\n# new name: {vc.name}\n```")
                     await menu.confirm(self, context, cursor, channel)
                     return
             except asyncio.TimeoutError:
@@ -646,6 +669,811 @@ class menu:
                         return
                 else:
                     await context.send(menu.invalid(self))
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def overwrite(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Overwrite' - {vc.name}\n```\n`1.)` `View Channel`\n`2.)` `Connect`\n`3.)` `Speak`\n`4.)` `Stream`\n`5.)` `Move Members`\n\n```py\n# Overwrite permissions are what allows you to join, talk, and even see the voice channel, etc.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.properties(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                elif wfc == '1' or 'view' in wfc:
+                    await msg.delete()
+                    await menu.view(self, context, cursor, channel)
+                    return
+                elif wfc == '2' or 'connect' in wfc:
+                    await msg.delete()
+                    await menu.connect(self, context, cursor, channel)
+                    return
+                elif wfc == '3' or 'speak' in wfc:
+                    await msg.delete()
+                    await menu.speak(self, context, cursor, channel)
+                    return
+                elif wfc == '4' or 'video' in wfc:
+                    await msg.delete()
+                    await menu.stream(self, context, cursor, channel)
+                    return
+                elif wfc == '5' or 'move' in wfc or 'member' in wfc:
+                    await msg.delete()
+                    await menu.move(self, context, cursor, channel)
+                    return
+                else:
+                    await context.send(menu.invalid(self))
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def view(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.overwrite(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                elif wfc == 'everyone':
+                    await wf.delete()
+                    await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Everyone** selected: `Grant`/`Default`/`Deny`\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                    while True:
+                        wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                        wfc = wf.content.lower()
+                        if wfc == 'back':
+                            await msg.delete()
+                            await menu.overwrite(self, context, cursor, channel)
+                            return
+                        elif wfc == 'exit':
+                            await msg.delete()
+                            await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                            return
+                        elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                            await msg.delete()
+                            return
+                        if wfc == 'grant':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.view_channel = None
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.view_channel = None
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.view_channel = True
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Granted**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'default':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.view_channel = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.view_channel = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.view_channel = None
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Not Set**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'deny':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.view_channel = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.view_channel = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.view_channel = False
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Denied**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        else:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                else:
+                    for m in context.guild.members:
+                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
+                            if m == context.guild.me:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Please don't touch my permissions**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            else:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**{m.name}** selected: `Grant`/`Default`/`Deny`\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                while True:
+                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                                    wfc = wf.content.lower()
+                                    if wfc == 'back':
+                                        await msg.delete()
+                                        await menu.overwrite(self, context, cursor, channel)
+                                        return
+                                    elif wfc == 'exit':
+                                        await msg.delete()
+                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                                        return
+                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                                        await msg.delete()
+                                        return
+                                    elif wfc == 'grant':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.view_channel = True
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Granted**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'default':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.view_channel = None
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Not Set**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'deny':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.view_channel = False
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Denied**\n\n```py\n# View channel allows users to be able to see the voice channel which allows them to access it.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    else:
+                                        await wf.delete()
+                                        invalid = await context.send(menu.invalid(self))
+                                        await invalid.delete(delay=1)
+                                break
+                        elif m == context.guild.members[-1]:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                            break
+                        else:
+                            pass
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def connect(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.overwrite(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                elif wfc == 'everyone':
+                    await wf.delete()
+                    await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Everyone** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                    while True:
+                        wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                        wfc = wf.content.lower()
+                        if wfc == 'back':
+                            await msg.delete()
+                            await menu.overwrite(self, context, cursor, channel)
+                            return
+                        elif wfc == 'exit':
+                            await msg.delete()
+                            await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                            return
+                        elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                            await msg.delete()
+                            return
+                        if wfc == 'grant':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.connect = None
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.connect = None
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.connect = True
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Granted**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'default':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.connect = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.connect = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.connect = None
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Not Set**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'deny':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.connect = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.connect = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.connect = False
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Denied**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        else:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                else:
+                    for m in context.guild.members:
+                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
+                            if m == context.guild.me:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Please don't touch my permissions**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            else:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**{m.name}** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                while True:
+                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                                    wfc = wf.content.lower()
+                                    if wfc == 'back':
+                                        await msg.delete()
+                                        await menu.overwrite(self, context, cursor, channel)
+                                        return
+                                    elif wfc == 'exit':
+                                        await msg.delete()
+                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                                        return
+                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                                        await msg.delete()
+                                        return
+                                    elif wfc == 'grant':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.connect = True
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Granted**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'default':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.connect = None
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Not Set**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'deny':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.connect = False
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Denied**\n\n```py\n# Connect allows users to join the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    else:
+                                        await wf.delete()
+                                        invalid = await context.send(menu.invalid(self))
+                                        await invalid.delete(delay=1)
+                                break
+                        elif m == context.guild.members[-1]:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                            break
+                        else:
+                            pass
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def speak(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.overwrite(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                elif wfc == 'everyone':
+                    await wf.delete()
+                    await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Everyone** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                    while True:
+                        wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                        wfc = wf.content.lower()
+                        if wfc == 'back':
+                            await msg.delete()
+                            await menu.overwrite(self, context, cursor, channel)
+                            return
+                        elif wfc == 'exit':
+                            await msg.delete()
+                            await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                            return
+                        elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                            await msg.delete()
+                            return
+                        if wfc == 'grant':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.speak = None
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.speak = None
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.speak = True
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Granted**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'default':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.speak = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.speak = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.speak = None
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Not Set**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'deny':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.speak = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.speak = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.speak = False
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Denied**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        else:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                else:
+                    for m in context.guild.members:
+                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
+                            if m == context.guild.me:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Please don't touch my permissions**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            else:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**{m.name}** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                while True:
+                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                                    wfc = wf.content.lower()
+                                    if wfc == 'back':
+                                        await msg.delete()
+                                        await menu.overwrite(self, context, cursor, channel)
+                                        return
+                                    elif wfc == 'exit':
+                                        await msg.delete()
+                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                                        return
+                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                                        await msg.delete()
+                                        return
+                                    elif wfc == 'grant':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.speak = True
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Granted**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'default':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.speak = None
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Not Set**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'deny':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.speak = False
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Denied**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    else:
+                                        await wf.delete()
+                                        invalid = await context.send(menu.invalid(self))
+                                        await invalid.delete(delay=1)
+                                break
+                        elif m == context.guild.members[-1]:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                            break
+                        else:
+                            pass
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def stream(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.overwrite(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                elif wfc == 'everyone':
+                    await wf.delete()
+                    await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Everyone** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                    while True:
+                        wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                        wfc = wf.content.lower()
+                        if wfc == 'back':
+                            await msg.delete()
+                            await menu.overwrite(self, context, cursor, channel)
+                            return
+                        elif wfc == 'exit':
+                            await msg.delete()
+                            await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                            return
+                        elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                            await msg.delete()
+                            return
+                        if wfc == 'grant':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.stream = None
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.stream = None
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.stream = True
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Granted**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'default':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.stream = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.stream = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.stream = None
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Not Set**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'deny':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.stream = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.stream = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.stream = False
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Denied**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        else:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                else:
+                    for m in context.guild.members:
+                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
+                            if m == context.guild.me:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Please don't touch my permissions**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            else:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**{m.name}** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                while True:
+                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                                    wfc = wf.content.lower()
+                                    if wfc == 'back':
+                                        await msg.delete()
+                                        await menu.overwrite(self, context, cursor, channel)
+                                        return
+                                    elif wfc == 'exit':
+                                        await msg.delete()
+                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                                        return
+                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                                        await msg.delete()
+                                        return
+                                    elif wfc == 'grant':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.stream = True
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Granted**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'default':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.stream = None
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Not Set**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'deny':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.stream = False
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Denied**\n\n```py\n# Stream allows users to share their screen or application in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    else:
+                                        await wf.delete()
+                                        invalid = await context.send(menu.invalid(self))
+                                        await invalid.delete(delay=1)
+                                break
+                        elif m == context.guild.members[-1]:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                            break
+                        else:
+                            pass
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def move(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.overwrite(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                elif wfc == 'everyone':
+                    await wf.delete()
+                    await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Everyone** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                    while True:
+                        wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                        wfc = wf.content.lower()
+                        if wfc == 'back':
+                            await msg.delete()
+                            await menu.overwrite(self, context, cursor, channel)
+                            return
+                        elif wfc == 'exit':
+                            await msg.delete()
+                            await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                            return
+                        elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                            await msg.delete()
+                            return
+                        if wfc == 'grant':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.move_members = None
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.move_members = None
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.move_members = True
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Granted**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'default':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.move_members = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.move_members = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.move_members = None
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Not Set**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        elif wfc == 'deny':
+                            await wf.delete()
+                            bot_perm = vc.overwrites_for(context.guild.me)
+                            bot_perm.move_members = True
+                            author_perm = vc.overwrites_for(context.author)
+                            author_perm.move_members = True
+                            default_perm = vc.overwrites_for(context.guild.default_role)
+                            default_perm.move_members = False
+                            await vc.set_permissions(context.guild.me, overwrite=bot_perm)
+                            await vc.set_permissions(context.author, overwrite=author_perm)
+                            await vc.set_permissions(context.guild.default_role, overwrite=default_perm)
+                            await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\nEveryone: **Denied**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                            break
+                        else:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                else:
+                    for m in context.guild.members:
+                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
+                            if m == context.guild.me:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**Please don't touch my permissions**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            else:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n**{m.name}** selected: `Grant`/`Default`/`Deny`\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                while True:
+                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                                    wfc = wf.content.lower()
+                                    if wfc == 'back':
+                                        await msg.delete()
+                                        await menu.overwrite(self, context, cursor, channel)
+                                        return
+                                    elif wfc == 'exit':
+                                        await msg.delete()
+                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                                        return
+                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                                        await msg.delete()
+                                        return
+                                    elif wfc == 'grant':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.move_members = True
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Granted**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'default':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.move_members = None
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Not Set**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    elif wfc == 'deny':
+                                        await wf.delete()
+                                        member_perm = vc.overwrites_for(m)
+                                        member_perm.move_members = False
+                                        await vc.set_permissions(m, overwrite=member_perm)
+                                        await msg.edit(content=f"```py\n'Menu for Overwrite' - {vc.name}\n```\nPlease enter valid `members` or type `everyone` to edit their permission\nThis menu will be edited.\n\n{m.name}: **Denied**\n\n```py\n# Move members allows users to move other users into voice channels they have access to or disconnect them.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    else:
+                                        await wf.delete()
+                                        invalid = await context.send(menu.invalid(self))
+                                        await invalid.delete(delay=1)
+                                break
+                        elif m == context.guild.members[-1]:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                            break
+                        else:
+                            pass
             except asyncio.TimeoutError:
                 await msg.delete()
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")

@@ -1,4 +1,4 @@
-import discord, os, psycopg2, datetime, time, asyncio, __main__
+import discord, os, psycopg2, datetime, time, asyncio, __main__, re
 from discord.ext import commands
 from guild import menu
 
@@ -92,12 +92,7 @@ class Commands(commands.Cog):
     @commands.command(name='Test', help="For testing purposes.") # Personal command
     @commands.is_owner()
     async def test(self, ctx):
-        try:
-            tstcmd = self.bot.get_command('tst')
-            await ctx.invoke(tstcmd)
-            await ctx.send(ctx)
-        except discord.Forbidden:
-            return
+        print(ctx.guild.members)
     @commands.command(name='Tst', help="For testing purposes.") # Personal command
     @commands.is_owner()
     async def tst(self, ctx):
@@ -176,8 +171,9 @@ class Commands(commands.Cog):
                 await self.bot.change_presence(activity=discord.Game(''))
                 await ctx.message.add_reaction("✅")
             elif len(changestatus) <= 128:
-                if 'https://' in changestatus:
-                    await ctx.send('No links.')
+                urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+| ', changestatus)
+                if urls:
+                    await ctx.send(f'**{ctx.author.name}**! No links please, thank you.')
                 else:
                     cur.execute(f"UPDATE bot SET message = '{changestatus}' WHERE name = 'Status';")
                     conn.commit()
