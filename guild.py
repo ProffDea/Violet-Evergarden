@@ -275,15 +275,16 @@ class menu:
             num, vname, vid = [], [], []
             for n, r in enumerate(rows):
                 if r[1] == context.author.id or r[1] == None:
-                    if r[1] == None:
-                        own = " - **NO OWNER**"
-                    else:
-                        own = ""
                     vc = self.bot.get_channel(r[0])
-                    mlist += f"`{n + 1}.)` **`{vc.name}`** `:` `{vc.id}`{own}\n"
-                    num += [str(n+1)]
-                    vname += [vc.name]
-                    vid += [str(vc.id)]
+                    if vc.guild.id == context.guild.id:
+                        if r[1] == None:
+                            own = " - **NO OWNER**"
+                        else:
+                            own = ""
+                        mlist += f"`{n + 1}.)` **`{vc.name}`** `:` `{vc.id}`{own}\n"
+                        num += [str(n+1)]
+                        vname += [vc.name]
+                        vid += [str(vc.id)]
             if mlist == "":
                 mlist = "No voice channels found.\n"
             if counter == 1:
@@ -509,7 +510,7 @@ class menu:
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Menu for Name' - {vc.name}\n```\nEnter a `message` to be the name for the selected voice channel\n\n```py\n# Displays the user's input as the voice channel's name | Name will always be in lower case due to discord limitations\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                content = f"```py\n'Menu for Name' - {vc.name}\n```\nEnter a `message` to be the name for the selected voice channel\n\n```py\n# Displays the user's input as the voice channel's name\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -527,7 +528,7 @@ class menu:
                     return
                 else:
                     await msg.delete()
-                    await vc.edit(name=wfc, reason="Name Changed")
+                    await vc.edit(name=wf.content, reason="Name Changed")
                     await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **NAME CHANGED** 💌\n\n```py\n# new name: {vc.name}\n```")
                     await menu.confirm(self, context, cursor, channel)
                     return
