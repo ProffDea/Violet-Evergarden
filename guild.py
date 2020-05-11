@@ -54,7 +54,125 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
-                await menu.user(self, ctx, cur)
+                if Menu != None:
+                    vc = None
+                    cur.execute(f"SELECT voicechl, owner FROM vclist WHERE owner = '{ctx.author.id}';")
+                    rows = cur.fetchall()
+                    for r in rows:
+                        if self.bot.get_channel(r[0]).guild.id == ctx.guild.id and Channel == str(r[0]):
+                            vc = self.bot.get_channel(r[0])
+                    if Menu.lower() == 'auto':
+                        await menu.auto(self, ctx, cur)
+                    elif Menu.lower() == 'personal':
+                        await menu.personal(self, ctx, cur)
+                    elif Menu.lower() == 'create':
+                        await menu.create(self, ctx, cur)
+                    elif Menu.lower() == 'manage':
+                        await menu.manage(self, ctx, cur)
+                    elif Menu.lower() == 'properties':
+                        if vc != None:
+                            await menu.properties(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.properties(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'transfer':
+                        if vc != None:
+                            await menu.transfer(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.transfer(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'permanent':
+                        if vc != None:
+                            await menu.permanent(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.permanent(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'name':
+                        if vc != None:
+                            await menu.name(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.name(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'bitrate':
+                        if vc != None:
+                            await menu.bitrate(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.bitrate(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'limit':
+                        if vc != None:
+                            await menu.user_limit(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.user_limit(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'position':
+                        if vc != None:
+                            await menu.position(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.position(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'category':
+                        if vc != None:
+                            await menu.category(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.category(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'overwrite':
+                        if vc != None:
+                            await menu.overwrite(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.overwrite(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'view':
+                        if vc != None:
+                            await menu.view(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.view(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'connect':
+                        if vc != None:
+                            await menu.connect(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.connect(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'speak':
+                        if vc != None:
+                            await menu.speak(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.speak(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'stream':
+                        if vc != None:
+                            await menu.stream(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.stream(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'move':
+                        if vc != None:
+                            await menu.move(self, ctx, cur, int(Channel))
+                        elif ctx.author.voice:
+                            await menu.move(self, ctx, cur, ctx.author.voice.channel.id)
+                        else:
+                            await menu.user(self, ctx, cur)
+                    elif Menu.lower() == 'user':
+                        await menu.user_settings(self, ctx, cur)
+                    else:
+                        await menu.user(self, ctx, cur)
+                else:
+                    await menu.user(self, ctx, cur)
             finally:
                 conn.commit()
                 cur.close()
@@ -288,7 +406,7 @@ class menu:
             if mlist == "":
                 mlist = "No voice channels found.\n"
             if counter == 1:
-                content = f"```py\n'Menu for Personal Voice Channel' - Manage Voice Channels\n```\n{mlist}\n```py\n# Change properties of voice channels that are owned by {context.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                content = f"```py\n'Menu for Manage Voice Channels' - {context.author.name}\n```\n{mlist}\n```py\n# Change properties of voice channels that are owned by {context.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -646,7 +764,7 @@ class menu:
                     vname += [p.name]
                     vid += [str(p.id)]
             if counter == 1:
-                pnumb = f"`{str(int(num[-1]) + 1)}.)` Select this position to go below **{vname[-1]}** (Does not want to work)"
+                pnumb = f"`{str(int(num[-1]) + 1)}.)` Select this position to go below **{vname[-1]}** (Does not want to work)\n"
                 content = f"```py\n'Menu for Position' - {vc.name}\n```\nChoose a **channel's** position to be on top of them\n\n{posvc}{pnumb}\n```py\n# Position number is the channel's current position in the category\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
@@ -1616,7 +1734,7 @@ class menu:
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `back` to change more settings or enter `done` to finish"
+                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `back` to change settings or enter `done` to finish"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
