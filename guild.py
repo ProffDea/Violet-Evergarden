@@ -58,7 +58,9 @@ class Settings(commands.Cog):
                     vc = None
                     cur.execute(f"SELECT voicechl, owner FROM vclist WHERE owner = '{ctx.author.id}';")
                     rows = cur.fetchall()
+                    chunk = []
                     for r in rows:
+                        chunk += [r[0]]
                         if self.bot.get_channel(r[0]).guild.id == ctx.guild.id and Channel == str(r[0]):
                             vc = self.bot.get_channel(r[0])
                     if Menu.lower() == 'auto':
@@ -73,98 +75,140 @@ class Settings(commands.Cog):
                         if vc != None:
                             await menu.properties(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.properties(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.properties(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'transfer':
                         if vc != None:
                             await menu.transfer(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.transfer(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.transfer(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'permanent':
                         if vc != None:
                             await menu.permanent(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.permanent(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.permanent(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'name':
                         if vc != None:
                             await menu.name(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.name(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.name(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'bitrate':
                         if vc != None:
                             await menu.bitrate(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.bitrate(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.bitrate(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'limit':
                         if vc != None:
                             await menu.user_limit(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.user_limit(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.user_limit(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'position':
                         if vc != None:
                             await menu.position(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.position(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.position(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'category':
                         if vc != None:
                             await menu.category(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.category(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.category(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'overwrite':
                         if vc != None:
                             await menu.overwrite(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.overwrite(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.overwrite(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'view':
                         if vc != None:
                             await menu.view(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.view(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.view(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'connect':
                         if vc != None:
                             await menu.connect(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.connect(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.connect(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'speak':
                         if vc != None:
                             await menu.speak(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.speak(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.speak(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'stream':
                         if vc != None:
                             await menu.stream(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.stream(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.stream(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'move':
                         if vc != None:
                             await menu.move(self, ctx, cur, int(Channel))
                         elif ctx.author.voice:
-                            await menu.move(self, ctx, cur, ctx.author.voice.channel.id)
+                            if ctx.author.voice.channel.id in chunk:
+                                await menu.move(self, ctx, cur, ctx.author.voice.channel.id)
+                            else:
+                                await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'user':
@@ -387,7 +431,7 @@ class menu:
             prefix = r[0]
         while True:
             counter = counter + 1
-            cursor.execute("SELECT * FROM vclist;") # Change this so it selects only voice channels in the guild
+            cursor.execute("SELECT * FROM vclist;")
             rows = cursor.fetchall()
             mlist = ""
             num, vname, vid = [], [], []
@@ -1734,12 +1778,12 @@ class menu:
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `back` to change settings or enter `done` to finish"
+                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `back` to change settings or enter `exit` to finish"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
                 wfc = wf.content.lower()
-                if wfc == 'done':
+                if wfc == 'exit':
                     await msg.delete()
                     await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
                     return
