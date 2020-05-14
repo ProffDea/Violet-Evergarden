@@ -13,9 +13,9 @@ class Music(commands.Cog):
 
     async def start_nodes(self):
         await self.bot.wait_until_ready()
-        await self.bot.wavelink.initiate_node(host='violet-lavalink.herokuapp.com',
+        await self.bot.wavelink.initiate_node(host=os.getenv('linkhost'),
                                             port=os.getenv('port'),
-                                            rest_uri='http://violet-lavalink.herokuapp.com',
+                                            rest_uri=os.getenv('urihost'),
                                             password=os.getenv('lavapass'),
                                             identifier='music-node',
                                             region='us_central')
@@ -40,7 +40,7 @@ class Music(commands.Cog):
         player = self.bot.wavelink.get_player(ctx.guild.id)
         if not player.is_connected:
             await ctx.invoke(self.connect)
-        await ctx.send(f'Added {str(tracks[0])} to the queue.')
+        await ctx.send(f'Added `{str(tracks[0])}` to the queue.')
         await player.play(tracks[0])
 
 def setup(bot):
