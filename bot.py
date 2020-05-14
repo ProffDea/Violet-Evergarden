@@ -35,7 +35,7 @@ async def on_ready():
     except KeyError:
         conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
     finally:
-        initial_extensions = ['commands', 'guild', 'events', 'music'] # Where you put python file names when making new cogs
+        initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
         if __name__ == '__main__':
             for extends in initial_extensions:
                 try:
