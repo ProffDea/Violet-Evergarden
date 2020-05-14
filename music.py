@@ -1,4 +1,4 @@
-import discord
+import discord, os
 import wavelink
 from discord.ext import commands
 
@@ -14,9 +14,9 @@ class Music(commands.Cog):
     async def start_nodes(self):
         await self.bot.wait_until_ready()
         await self.bot.wavelink.initiate_node(host='violet-lavalink.herokuapp.com',
-                                            port=80,
+                                            port=os.getenv('port'),
                                             rest_uri='http://violet-lavalink.herokuapp.com',
-                                            password='gardenlink',
+                                            password=os.getenv('lavapass'),
                                             identifier='music-node',
                                             region='us_central')
 
