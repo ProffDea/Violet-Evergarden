@@ -1,4 +1,4 @@
-import asyncio, discord, os, psycopg2
+import discord, os, psycopg2, asyncio
 from discord.ext import commands
 
 class Settings(commands.Cog):
@@ -91,6 +91,16 @@ class Settings(commands.Cog):
                                 await menu.user(self, ctx, cur)
                         else:
                             await menu.user(self, ctx, cur)
+                    #elif Menu.lower() == 'co-owner':
+                    #    if vc != None:
+                    #        await menu.co_owner(self, ctx, cur, int(Channel))
+                    #    elif ctx.author.voice:
+                    #        if ctx.author.voice.channel.id in chunk:
+                    #            await menu.co_owner(self, ctx, cur, ctx.author.voice.channel.id)
+                    #        else:
+                    #            await menu.user(self, ctx, cur)
+                    #    else:
+                    #        await menu.user(self, ctx, cur)
                     elif Menu.lower() == 'permanent':
                         if vc != None:
                             await menu.permanent(self, ctx, cur, int(Channel))
@@ -507,7 +517,7 @@ class menu:
                 rows = cursor.fetchall()
                 for r in rows:
                     static = r[0]
-                content = f"{notif}```py\n'Menu for Properties' - {vc.name} | {prefix}vc Properties [CHANNEL ID]\n```\n`1.)` `Owner Transfership` - current owner: **{context.author.name}**\n`2.)` `Permanent Channel` - **{static}**\n`3.)` `Channel Name` - **{vc.name}**\n`4.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`5.)` `User Limit` - **{vc.user_limit}**\n`6.)` `Channel Position` - **{vc.position}**\n`7.)` `Channel Category` - **{vc.category}**\n`8.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                content = f"{notif}```py\n'Menu for Properties' - {vc.name} | {prefix}vc Properties [CHANNEL ID]\n```\n`1.)` `Owner Transfership` - current owner: **{context.author.name}**\n`2.)` `Add Co-Owner` - **Work in Progress**\n`3.)` `Permanent Channel` - **{static}**\n`4.)` `Channel Name` - **{vc.name}**\n`5.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`6.)` `User Limit` - **{vc.user_limit}**\n`7.)` `Channel Position` - **{vc.position}**\n`8.)` `Channel Category` - **{vc.category}**\n`9.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -523,35 +533,39 @@ class menu:
                 elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
                     await msg.delete()
                     return
-                elif wfc == '1' or 'owner' in wfc or 'transfer' in wfc:
+                elif wfc == '1' or 'transfer' in wfc:
                     await msg.delete()
                     await menu.transfer(self, context, cursor, channel)
                     return
-                elif wfc == '2' or 'permanent' in wfc:
+                #elif wfc == '2' or 'add' in wfc:
+                #    await msg.delete()
+                #    await menu.co_owner(self, context, cursor, channel)
+                #    return
+                elif wfc == '3' or 'permanent' in wfc:
                     await msg.delete()
                     await menu.permanent(self, context, cursor, channel)
                     return
-                elif wfc == '3' or 'name' in wfc:
+                elif wfc == '4' or 'name' in wfc:
                     await msg.delete()
                     await menu.name(self, context, cursor, channel)
                     return
-                elif wfc == '4' or 'bitrate' in wfc:
+                elif wfc == '5' or 'bitrate' in wfc:
                     await msg.delete()
                     await menu.bitrate(self, context, cursor, channel)
                     return
-                elif wfc == '5' or 'user limit' in wfc:
+                elif wfc == '6' or 'user limit' in wfc:
                     await msg.delete()
                     await menu.user_limit(self, context, cursor, channel)
                     return
-                elif wfc == '6' or 'position' in wfc:
+                elif wfc == '7' or 'position' in wfc:
                     await msg.delete()
                     await menu.position(self, context, cursor, channel)
                     return
-                elif wfc == '7' or 'category' in wfc:
+                elif wfc == '8' or 'category' in wfc:
                     await msg.delete()
                     await menu.category(self, context, cursor, channel)
                     return
-                elif wfc == '8' or 'overwrite' in wfc or 'permission' in wfc:
+                elif wfc == '9' or 'overwrite' in wfc or 'permission' in wfc:
                     await msg.delete()
                     await menu.overwrite(self, context, cursor, channel)
                     return
@@ -625,6 +639,97 @@ class menu:
                                     elif wfc == 'no':
                                         await wf.delete()
                                         await msg.edit(content=f"```py\n'Menu for Ownership Transfer' - {vc.name} | {prefix}vc Transfer [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n```py\n# Transfering ownership will no longer allow you to edit this voice channel and will remove your permissions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                        break
+                                    else:
+                                        await wf.delete()
+                                        invalid = await context.send(menu.invalid(self))
+                                        await invalid.delete(delay=1)
+                                break
+                        elif m == context.guild.members[-1]:
+                            await wf.delete()
+                            invalid = await context.send(menu.invalid(self))
+                            await invalid.delete(delay=1)
+                            break
+                        else:
+                            pass
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                return
+
+    async def co_owner(self, context, cursor, channel):
+        def verify(v):
+            return v.content and v.author == context.author and v.channel == context.channel
+        counter = 0
+        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
+        rows = cursor.fetchall()
+        for r in rows:
+            prefix = r[0]
+        vc = self.bot.get_channel(channel)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                content = f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owner [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                msg = await context.send(content)
+            try:
+                wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                wfc = wf.content.lower()
+                if wfc == 'back':
+                    await msg.delete()
+                    await menu.properties(self, context, cursor, channel)
+                    return
+                elif wfc == 'exit':
+                    await msg.delete()
+                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    return
+                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                    await msg.delete()
+                    return
+                else:
+                    for m in context.guild.members:
+                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
+                            cursor.execute(f"SELECT admin FROM vclist WHERE voicechl = '{vc.id}';")
+                            rows = cursor.fetchall()
+                            array = []
+                            for r in rows:
+                                if r[0] != None:
+                                    array += [r[0]]
+                            if m.bot == True:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owners [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n**Bots can not be Co-Owners of voice channels**\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            elif m.id in array:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owners [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n**Member already a Co-Owner**\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                break
+                            else:
+                                await wf.delete()
+                                await msg.edit(content=f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owners [CHANNEL ID]\n```\nAre you sure you wish to add **{m.name}** as a Co-Owner?\n`Yes`/`No`\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                while True:
+                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
+                                    wfc = wf.content.lower()
+                                    if wfc == 'back':
+                                        await msg.delete()
+                                        await menu.overwrite(self, context, cursor, channel)
+                                        return
+                                    elif wfc == 'exit':
+                                        await msg.delete()
+                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                                        return
+                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                                        await msg.delete()
+                                        return
+                                    elif wfc == 'yes':
+                                        await msg.delete()
+                                        cursor.execute("""INSERT INTO vclist (admin) VALUES ('{"%s"}');""", (m.id))
+                                        author_perm = vc.overwrites_for(context.author)
+                                        await vc.set_permissions(m, overwrite=author_perm)
+                                        await vc.set_permissions(context.author, overwrite=None)
+                                        await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **{m.name.upper()} ADDED AS CO-OWNER** 💌\n\n```py\n# {m.name} can now edit this voice channel.\n```")
+                                        return
+                                    elif wfc == 'no':
+                                        await wf.delete()
+                                        await msg.edit(content=f"```py\n'Menu for Co-Owner' - {vc.name} | {prefix}vc Co-Owner [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
                                         break
                                     else:
                                         await wf.delete()
@@ -1834,7 +1939,6 @@ class menu:
                 await msg.delete()
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
-
 
 def setup(bot):
     bot.add_cog(Settings(bot))

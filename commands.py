@@ -89,66 +89,12 @@ class Commands(commands.Cog):
         except discord.Forbidden:
             return
 
-    @commands.command(name='Test', help="For testing purposes.") # Personal command
-    @commands.is_owner()
-    async def test(self, ctx):
-        print(ctx.guild.members)
-    @commands.command(name='Tst', help="For testing purposes.") # Personal command
-    @commands.is_owner()
-    async def tst(self, ctx):
-        try:
-            if self.bot.get_channel(688233415048429609) == None:
-                lol = 'empty'
-            else:
-                lol = 'notempy'
-            await ctx.send(lol)
-        except discord.Forbidden:
-            return
-
     @commands.command(name='Ping', help="Shows bot's latency in milliseconds.")
     async def ping(self, ctx):
         try:
             await ctx.send(f'Pong: {round(self.bot.latency * 1000)}ms')
         except discord.Forbidden:
             return
-
-    @commands.command(name='Join', help='Has the bot join the vc. Mainly for testing purposes.')
-    @commands.guild_only()
-    async def join(self, ctx):
-        try:
-            try:
-                try:
-                    try:
-                        await ctx.author.voice.channel.connect()
-                        await ctx.message.delete()
-                    except AttributeError:
-                        await ctx.send("You're not in a VC!")
-                except discord.ClientException:
-                    await ctx.send("I'm already in a VC!")
-            except TimeoutError:
-                try:
-                    ctx.send(menu.miss_permission(self))
-                except discord.Forbidden:
-                    return
-        except discord.Forbidden:
-            try:
-                await ctx.send(menu.miss_permission(self))
-            except discord.Forbidden:
-                return
-    @commands.command(name='Leave', help='Has the bot leave the vc. Mainly for testing purposes.')
-    @commands.guild_only()
-    async def leave(self, ctx):
-        try:
-            try:
-                    await ctx.voice_client.disconnect()
-                    await ctx.message.delete()
-            except AttributeError:
-                    await ctx.send("I'm not in a VC!")
-        except discord.Forbidden:
-            try:
-                await ctx.send(menu.miss_permission(self))
-            except discord.Forbidden:
-                return
 
     @commands.command(name='Status', help="Changes bot's status message.") # Anyone can use this command and it changes the bot's status.
     async def status(self, ctx, *, changestatus=None): # example(*, args) : ex. "Example text" | example(*args) : ex. "Example" "text"
@@ -171,7 +117,7 @@ class Commands(commands.Cog):
                 await self.bot.change_presence(activity=discord.Game(''))
                 await ctx.message.add_reaction("✅")
             elif len(changestatus) <= 128:
-                urls = re.findall(r'http[s]?://(?:[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+| ', changestatus)
+                urls = re.findall(r'http[s]?://(?: |[a-zA-Z]|[0-9]|[$-_@.&+]|[!*\(\),]|(?:%[0-9a-fA-F][0-9a-fA-F]))+', changestatus)
                 if urls:
                     await ctx.send(f'**{ctx.author.name}**! No links please, thank you.')
                 else:

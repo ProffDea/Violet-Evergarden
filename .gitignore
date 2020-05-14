@@ -4,3 +4,4 @@
 VioletVenv/
 *.json
 *.pyc
+logs/spring.log

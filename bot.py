@@ -27,14 +27,6 @@ def miss_permission():
 
 bot = commands.Bot(command_prefix=cstmprefix, description=miss_permission(), case_insensitive=True)
 
-initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
-if __name__ == '__main__':
-    for extends in initial_extensions:
-        try:
-            bot.load_extension(extends)
-        except Exception as error:
-            print(f'{extends} cannot be loaded. [{error}]')
-
 @bot.event
 async def on_ready():
     try:
@@ -43,6 +35,13 @@ async def on_ready():
     except KeyError:
         conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
     finally:
+        initial_extensions = ['commands', 'guild', 'events', 'music'] # Where you put python file names when making new cogs
+        if __name__ == '__main__':
+            for extends in initial_extensions:
+                try:
+                    bot.load_extension(extends)
+                except Exception as error:
+                    print(f'{extends} cannot be loaded. [{error}]')
         cur = conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT); CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], members SMALLINT NOT NULL, static BOOLEAN NOT NULL);")
         cur.execute("CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL);")
