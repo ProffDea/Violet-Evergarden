@@ -5,3 +5,5 @@ VioletVenv/
 *.json
 *.pyc
 logs/spring.log
+application.yml
+Lavalink.jar
