@@ -7,7 +7,7 @@ class Music(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
         self.bot.music= lavalink.Client(self.bot.user.id)
-        self.bot.music.add_node('violet-lavalink.herokuapp.com', 80, 'pleasetest', 'na', 'music-node')
+        self.bot.music.add_node('https://violet-lavalink.herokuapp.com/', 80, 'gardenlink', 'na', 'music-node')
         self.bot.add_listener(self.bot.music.voice_update_handler, 'on_socket_response')
         self.bot.music.add_event_hook(self.track_hook)
         
