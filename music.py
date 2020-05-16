@@ -22,8 +22,10 @@ class Music(commands.Cog):
                 await self.connect_to(ctx.guild.id, str(vc.id))
 
     @commands.command(name='Play', help="Simple music player")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def play(self, ctx, *, query):
         try:
+            await ctx.invoke(self.join)
             player = self.bot.music.player_manager.get(ctx.guild.id)
             query = f"ytsearch:{query}"
             results = await player.node.get_tracks(query)
@@ -48,6 +50,13 @@ class Music(commands.Cog):
                 await ctx.send("Timeout")
         except Exception as error:
             print(error)
+    @play.error
+    async def play_error(self, ctx, error):
+        if isinstance(error, commands.CommandOnCooldown):
+            await ctx.send(error)
+            return
+        else:
+            raise error
 
     async def track_hook(self, event):
         if isinstance(event, lavalink.events.QueueEndEvent):
