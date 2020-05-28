@@ -11,7 +11,7 @@ class Music(commands.Cog):
         self.bot.add_listener(self.bot.music.voice_update_handler, 'on_socket_response')
         self.bot.music.add_event_hook(self.track_hook)
         
-    @commands.command(name='Join', help="Joins current voice channel to play music")
+    @commands.command(name=['Join', 'Connect'], help="Joins current voice channel to play music")
     async def join(self, ctx):
         member = utils.find(lambda m: m.id == ctx.author.id, ctx.guild.members)
         if member is not None and member.voice is not None:

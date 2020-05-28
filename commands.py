@@ -198,20 +198,5 @@ class Commands(commands.Cog):
             cur.close()
             conn.close()
 
-    @commands.command(name='Alter')
-    @commands.is_owner()
-    async def alter(self, ctx):
-        try:
-            DATABASE_URL = os.environ['DATABASE_URL']
-            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
-        except KeyError:
-            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
-        finally:
-            cur = conn.cursor()
-            cur.execute("ALTER TABLE vclist DROP COLUMN members;")
-            conn.commit()
-            cur.close()
-            conn.close()
-
 def setup(bot):
     bot.add_cog(Commands(bot))
