@@ -8,7 +8,7 @@ class Commands(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(name='Lg', help='Bot goes offline')
+    @commands.command(name='Lg', aliases=['Logout'], help='Bot goes offline')
     @commands.guild_only()
     @commands.is_owner()
     async def boutaheadout(self, ctx):
@@ -22,7 +22,7 @@ class Commands(commands.Cog):
             except discord.Forbidden:
                 return
 
-    @commands.command(name='L', help='Loads a cog.')
+    @commands.command(name='L', aliases=['Load'], help='Loads a cog.')
     @commands.is_owner()
     async def load(self, ctx, extension):
         try:
@@ -38,7 +38,7 @@ class Commands(commands.Cog):
         except discord.Forbidden:
             return
 
-    @commands.command(name='U', help='Unloads a cog.')
+    @commands.command(name='U', aliases=['Unload'], help='Unloads a cog.')
     @commands.is_owner()
     async def unload(self, ctx, extension):
         try:
@@ -55,7 +55,7 @@ class Commands(commands.Cog):
         except discord.Forbidden:
             return
     
-    @commands.command(name='R', help='Reloads a cog.')
+    @commands.command(name='R', aliases=['Reload'], help='Reloads a cog.')
     @commands.is_owner()
     async def reload(self, ctx, extension):
         try:
@@ -157,7 +157,7 @@ class Commands(commands.Cog):
             return
 
 
-    @commands.command(name="Avatar", help="Gets a valid user's profile picture.")
+    @commands.command(name='Avatar', aliases=['PFP', 'Picture'], help="Gets a valid user's profile picture.")
     async def avatar(self, ctx, *, Member: discord.Member=None):
         try:
             if Member == None:
@@ -172,7 +172,7 @@ class Commands(commands.Cog):
         except discord.Forbidden:
             return
 
-    @commands.command(name='Blacklist', help="Prevents specific user by ID from using a specific command.")
+    @commands.command(name='BL', aliases=['Blacklist'], help="Prevents specific user by ID from using a specific command.")
     @commands.is_owner()
     async def blacklist(self, ctx, ID, Name):
         try:
@@ -194,6 +194,21 @@ class Commands(commands.Cog):
                     await ctx.send("User ID is required.")
             except AttributeError:
                 await ctx.send("Member could not be found.")
+            conn.commit()
+            cur.close()
+            conn.close()
+
+    @commands.command(name='Alter')
+    @commands.is_owner()
+    async def alter(self, ctx):
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
+        finally:
+            cur = conn.cursor()
+            cur.execute("ALTER TABLE vclist DROP COLUMN members;")
             conn.commit()
             cur.close()
             conn.close()
