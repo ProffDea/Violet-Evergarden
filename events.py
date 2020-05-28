@@ -63,28 +63,26 @@ class Events(commands.Cog):
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
-            cur = conn.cursor()
-            cur.execute(f"SELECT autovc FROM servers WHERE guild = '{channel.guild.id}';")
-            vcs = cur.fetchall()
-            for v in vcs:
-                if v[0] == None:
-                    break
-                else:
-                    if self.bot.get_channel(v[0]) == None:
-                        cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{v[0]}'")
+            try:
+                cur = conn.cursor()
+                cur.execute(f"SELECT autovc FROM servers WHERE guild = '{channel.guild.id}';")
+                autovc = cur.fetchall()
+                for a in autovc:
+                    if a[0] == None:
                         break
-            cur.execute("SELECT voicechl FROM vclist;")
-            vclistall = cur.fetchall()
-            for vl in vclistall:
-                if vl[0] == None:
-                    break
-                else:
+                    elif self.bot.get_channel(a[0]) == None:
+                        cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{a[0]}'")
+                        return
+                cur.execute("SELECT voicechl FROM vclist;")
+                vclist = cur.fetchall()
+                for vl in vclist:
                     if self.bot.get_channel(vl[0]) == None:
                         cur.execute(f"DELETE FROM vclist WHERE voicechl = '{vl[0]}';")
-                        break
-            conn.commit()
-            cur.close()
-            conn.close()
+                        return
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
@@ -94,52 +92,31 @@ class Events(commands.Cog):
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
-            cur = conn.cursor()
-            if after.channel:
+            try:
+                cur = conn.cursor()
+                cur.execute("SELECT voicechl FROM vclist;")
+                vclist = cur.fetchall()
                 cur.execute(f"SELECT autovc FROM servers WHERE guild = '{member.guild.id}';")
-                vcs = cur.fetchall()
-                for v in vcs:
-                    if v[0] == None:
-                        break
-                    else:
-                        autovc = self.bot.get_channel(v[0])
-                        cur.execute("SELECT voicechl, owner, members, static FROM vclist;")
-                        rows = cur.fetchall()
-                        for r in rows:
-                            if after.channel == autovc and r[1] == member.id and r[2] == 0 and r[3] == True:
-                                vcclone = self.bot.get_channel(r[0])
-                                await member.move_to(vcclone)
-                                return
-                        if after.channel == autovc:
-                            vcclone = await autovc.clone(name=f'💌{member.name}', reason=f"{member.name} has created this VC.")
-                            cur.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vcclone.id}', '{member.id}', '1', 'FALSE');")
-                            await vcclone.edit(reason='Moving', position=autovc.position + 1)
-                            await member.move_to(vcclone)
-                            break
-                        else:
-                            break
-            if after.channel or before.channel:
-                cur.execute(f"SELECT voicechl, members, static FROM vclist;")
-                vclistall = cur.fetchall()
-                for vl in vclistall:
-                    if vl[0] == None:
-                        break
-                    else:
-                        vclist = self.bot.get_channel(vl[0])
-                        if before.channel == vclist or after.channel == vclist:
-                            cur.execute(f"UPDATE vclist SET members = '{len(vclist.members)}' WHERE voicechl = '{vl[0]}';")
-                            conn.commit()
-                            cur.execute("SELECT voicechl, members, static FROM vclist;")
-                            vcinside = cur.fetchall()
-                            for vi in vcinside:
-                                if vi[1] == 0 and vi[2] == False:
-                                    if before.channel == vclist:
-                                        await before.channel.delete(reason='VC is empty.')
-                                    elif after.channel == vclist:
-                                        await after.channel.delete(reason='VC is empty.')
-            conn.commit()
-            cur.close()
-            conn.close()
+                autovc = cur.fetchall()
+                if after.channel == None: # Checking if hard disconnecting
+                    pass
+                elif before.channel == None or [item for item in autovc if after.channel.id in item] and before.channel != None: # Triggers on joining a channel or an autovc except for hard disconnects
+                    if [item for item in autovc if after.channel.id in item]: # Triggers on hard joining autovc or moving to autovc
+                        clone = await after.channel.clone(name=f'💌{member.name}', reason=f"{member.name} has created this VC.")
+                        cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
+                        await member.move_to(clone)
+                if before.channel == None: # Checking if hard joining
+                    pass
+                elif after.channel != None and before.channel != None and [item for item in vclist if before.channel.id in item] or after.channel == None and [item for item in vclist if before.channel.id in item]: # Triggers on moving out of VC or hard disconnecting from VC
+                    cur.execute(f"SELECT static FROM vclist WHERE voicechl = '{before.channel.id}';")
+                    static = cur.fetchall()
+                    if len(before.channel.members) == 0 and [item for item in static if item[0] == False]: # Triggers on empty and non-permanent VC
+                        await before.channel.delete(reason='VC is empty.')
+                    return
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
 
 def setup(bot):
     bot.add_cog(Events(bot))
