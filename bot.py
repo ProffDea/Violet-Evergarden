@@ -43,7 +43,7 @@ async def on_ready():
                 except Exception as error:
                     print(f'{extends} cannot be loaded. [{error}]')
         cur = conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT); CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], members SMALLINT NOT NULL, static BOOLEAN NOT NULL);")
+        cur.execute("CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT); CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);")
         cur.execute("CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL);")
         cur.execute("SELECT * FROM bot WHERE name = 'Status';")
         rows = cur.fetchall()
@@ -73,7 +73,7 @@ async def on_ready():
                 pass
             else:
                 if bot.get_channel(g[1]) == None:
-                    cur.execute("DELETE autovc FROM servers WHERE autovc = '{%s}';", (g[1],))
+                    cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{g[0]}';")
                     continue
         cur.execute("SELECT voicechl FROM vclist;")
         lists = cur.fetchall()
