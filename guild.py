@@ -425,7 +425,7 @@ class menu:
                 await context.send(f"```py\n# Personal Voice Channel\n```\n**❗CHANNEL DENIED❗**\n\n```py\n# {context.author.name} already has a voice channel created\n```")
                 return
         vc = await context.guild.create_voice_channel(name=f"💌{context.author.name}")
-        cursor.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vc.id}', '{context.author.id}', '1', 'f');")
+        cursor.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{vc.id}', '{context.author.id}', 'f');")
         content = f"```py\n# {context.author.name} | Personal Voice Channel\n```\n💌 **CHANNEL CREATED** 💌\n\n```py\n# name / id: {vc.name} / {vc.id}\n```"
         await context.send(content)
         await menu.confirm(self, context, cursor, vc.id)
