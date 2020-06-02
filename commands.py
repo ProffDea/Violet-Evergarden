@@ -1,8 +1,13 @@
-import discord, os, psycopg2, datetime, time, asyncio, __main__, re
+import discord
+import os
+import psycopg2
+import datetime
+import time
+import asyncio
+import __main__
+import re
 from discord.ext import commands
 from guild import menu
-
-ft = time.time()
 
 class Commands(commands.Cog):
     def __init__(self, bot):
@@ -18,7 +23,7 @@ class Commands(commands.Cog):
             print(f"{self.bot.user.name} has went offline.")
         except discord.Forbidden:
             try:
-                await ctx.send(menu.miss_permission(self))
+                await ctx.send("Permissions missing")
             except discord.Forbidden:
                 return
 
@@ -134,17 +139,17 @@ class Commands(commands.Cog):
     async def uptime(self, ctx):
         try:
             lt = time.time()
-            d = int(round(lt - ft))
+            d = int(round(lt - self.bot.global_ft))
             up = str(datetime.timedelta(seconds=d))
             cont = f"**{self.bot.user.name}'s** uptime: {up}"
             msg = await ctx.send(cont)
             counter = 0
-            sadd = 0
+            add_sec = 0
             while counter < 5:
                 counter = counter + 1
-                sadd = sadd + 1
+                add_sec = add_sec + 1
                 await asyncio.sleep(1)
-                d = int(round(lt - ft)) + sadd
+                d = int(round(lt - self.bot.global_ft)) + add_sec
                 up = str(datetime.timedelta(seconds=d))
                 cont = f"**{self.bot.user.name}'s** uptime: {up}"
                 await msg.edit(content=cont)

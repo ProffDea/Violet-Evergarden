@@ -1,4 +1,7 @@
-import discord, os, psycopg2
+import discord
+import os
+import psycopg2
+import time
 from dotenv import load_dotenv
 from discord.ext import commands
 
@@ -26,6 +29,16 @@ def miss_permission():
     return "Please make sure I have all the necessary permissions to properly work!\nPermissions such as:\nManage Channels, Read Text Channels & See Voice Channels, Send Messages, Manage Messages, Use External Emojis, Add Reactions, Connect, Move Members"
 
 bot = commands.Bot(command_prefix=cstmprefix, description=miss_permission(), case_insensitive=True)
+bot.global_ft = time.time()
+bot.voice_cool = {}
+
+initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
+if __name__ == '__main__':
+    for extends in initial_extensions:
+        try:
+            bot.load_extension(extends)
+        except Exception as error:
+            print(f'{extends} cannot be loaded. [{error}]')
 
 @bot.event
 async def on_ready():
@@ -35,13 +48,6 @@ async def on_ready():
     except KeyError:
         conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
     finally:
-        initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
-        if __name__ == '__main__':
-            for extends in initial_extensions:
-                try:
-                    bot.load_extension(extends)
-                except Exception as error:
-                    print(f'{extends} cannot be loaded. [{error}]')
         cur = conn.cursor()
         cur.execute("CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT); CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);")
         cur.execute("CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL);")
