@@ -1,4 +1,9 @@
-import json, os, psycopg2
+import json
+import os
+import psycopg2
+import discord
+import time
+import datetime
 from discord.ext import commands
 
 def TestServerEmoji():
@@ -98,19 +103,43 @@ class Events(commands.Cog):
                 vclist = cur.fetchall()
                 cur.execute(f"SELECT autovc FROM servers WHERE guild = '{member.guild.id}';")
                 autovc = cur.fetchall()
-                if after.channel == None: # Checking if hard disconnecting
+                # Checking if hard disconnecting
+                if after.channel == None:
                     pass
-                elif before.channel == None or [item for item in autovc if after.channel.id in item] and before.channel != None: # Triggers on joining a channel or an autovc except for hard disconnects
-                    if [item for item in autovc if after.channel.id in item]: # Triggers on hard joining autovc or moving to autovc
-                        clone = await after.channel.clone(name=f'💌{member.name}', reason=f"{member.name} has created this VC.")
-                        cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
-                        await member.move_to(clone)
-                if before.channel == None: # Checking if hard joining
+                # Triggers on joining a channel or an autovc except for hard disconnects
+                elif before.channel == None or [item for item in autovc if after.channel.id in item] and before.channel != None:
+                    # Triggers on hard joining autovc or moving to autovc
+                    if [item for item in autovc if after.channel.id in item]:
+                        if member.id in self.bot.voice_cool:
+                            sec = int(round(time.time() - self.bot.voice_cool[member.id]['log']))
+                        else:
+                            sec = 11
+                        if sec <= 10:
+                            if before.channel != None:
+                                await member.move_to(before.channel)
+                            else:
+                                await member.move_to(None)
+                            if self.bot.voice_cool[member.id]['dm'] == False:
+                                try:
+                                    await member.send(f"💌 | Please wait **{10 - sec}** seconds for a new channel. Thank you.", delete_after=10)
+                                except:
+                                    pass
+                                self.bot.voice_cool[member.id]['dm'] = True
+                            return
+                        else:
+                            clone = await after.channel.clone(name=f'💌{member.name}', reason=f"{member.name} has created this VC.")
+                            cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
+                            await member.move_to(clone)
+                            self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
+                # Checking if hard joining
+                if before.channel == None:
                     pass
-                elif after.channel != None and before.channel != None and [item for item in vclist if before.channel.id in item] or after.channel == None and [item for item in vclist if before.channel.id in item]: # Triggers on moving out of VC or hard disconnecting from VC
+                # Triggers on moving out of VC or hard disconnecting from VC
+                elif after.channel != None and before.channel != None and [item for item in vclist if before.channel.id in item] or after.channel == None and [item for item in vclist if before.channel.id in item]:
                     cur.execute(f"SELECT static FROM vclist WHERE voicechl = '{before.channel.id}';")
                     static = cur.fetchall()
-                    if len(before.channel.members) == 0 and [item for item in static if item[0] == False]: # Triggers on empty and non-permanent VC
+                    # Triggers on empty and non-permanent VC
+                    if len(before.channel.members) == 0 and [item for item in static if item[0] == False]:
                         await before.channel.delete(reason='VC is empty.')
                     return
             finally:
