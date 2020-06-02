@@ -55,8 +55,7 @@ class Events(commands.Cog):
         elif isinstance(error, commands.NotOwner):
             return
         elif isinstance(error, commands.CommandOnCooldown):
-            cool = await ctx.send(error)
-            await cool.delete(delay=5)
+            await ctx.send(error, delete_after=5)
         else:
             raise error
 

@@ -1,4 +1,7 @@
-import discord, os, psycopg2, asyncio
+import discord
+import os
+import psycopg2
+import asyncio
 from discord.ext import commands
 
 class Settings(commands.Cog):
@@ -6,6 +9,7 @@ class Settings(commands.Cog):
             self.bot = bot
 
     @commands.command(name='Prefix', help='Allows to change the default prefix to a custom one.')
+    @commands.cooldown(1, 5, commands.BucketType.user)
     @commands.guild_only()
     async def prefix(self, ctx, *, changeprefix=None):
         try:
@@ -16,13 +20,14 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
-                if ctx.channel.permissions_for(ctx.author).manage_guild == True and changeprefix != None:
-                    if len(changeprefix) <= 9:
-                        cur.execute(f"UPDATE servers SET prefix = '{changeprefix}' WHERE guild = '{ctx.guild.id}';")
-                        await ctx.send(f"Prefix for `{ctx.guild.name}` has been changed to **{changeprefix}**")
-                    else:
-                        await ctx.send("Please make the prefix less than 10 characters long.")
-                elif ctx.channel.permissions_for(ctx.author).manage_guild == False and changeprefix != None:
+                if changeprefix == None:
+                    pass
+                elif ctx.channel.permissions_for(ctx.author).manage_guild == True and len(changeprefix) <= 9:
+                    cur.execute(f"UPDATE servers SET prefix = '{changeprefix}' WHERE guild = '{ctx.guild.id}';")
+                    await ctx.send(f"Prefix for `{ctx.guild.name}` has been changed to **{changeprefix}**")
+                elif len(changeprefix) >= 9:
+                    await ctx.send("Please make the prefix less than 10 characters long.")
+                elif ctx.channel.permissions_for(ctx.author).manage_guild == False:
                     await ctx.send("This command requires the user to have `Manage Server` permissions to use.")
                 cur.execute(f"SELECT prefix FROM servers WHERE guild = '{ctx.guild.id}';")
                 rows = cur.fetchall()
@@ -33,18 +38,14 @@ class Settings(commands.Cog):
                     await ctx.send(f"The current prefix for this server is **{prefixmsg}**\n\nIn order to change the prefix of the server, type `{prefixmsg}prefix [TEXT]`")
                 elif ctx.channel.permissions_for(ctx.author).manage_guild == False and changeprefix == None:
                     await ctx.send(f"The current prefix for the server is **{prefixmsg}**")
-            except discord.Forbidden:
-                try:
-                    await ctx.send(menu.miss_permission(self))
-                except:
-                    return
-            conn.commit()
-            cur.close()
-            conn.close()
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
 
     @commands.command(name="Vc", help="In Beta")
-    @commands.cooldown(1, 5, commands.BucketType.user)
     @commands.guild_only()
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def vc(self, ctx, Menu=None, Channel=None):
         try:
             DATABASE_URL = os.environ['DATABASE_URL']
@@ -54,6 +55,8 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
+                menus = ['auto', 'personal', 'create', 'manage', 'settings']
+                alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrite', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
                 if Menu != None:
                     vc = None
                     cur.execute(f"SELECT voicechl, owner FROM vclist WHERE owner = '{ctx.author.id}';")
@@ -63,170 +66,24 @@ class Settings(commands.Cog):
                         chunk += [r[0]]
                         if self.bot.get_channel(r[0]).guild.id == ctx.guild.id and Channel == str(r[0]):
                             vc = self.bot.get_channel(r[0])
-                    if Menu.lower() == 'auto':
-                        await menu.auto(self, ctx, cur)
-                    elif Menu.lower() == 'personal':
-                        await menu.personal(self, ctx, cur)
-                    elif Menu.lower() == 'create':
-                        await menu.create(self, ctx, cur)
-                    elif Menu.lower() == 'manage':
-                        await menu.manage(self, ctx, cur)
-                    elif Menu.lower() == 'properties':
-                        if vc != None:
-                            await menu.properties(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.properties(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
+                    if Menu.lower() in menus:
+                        await getattr(menu, Menu)(self, ctx, cur) # return?
+                        return
+                    elif Menu.lower() in alter:
+                        if ctx.author.voice == None:
+                            pass
+                        elif ctx.author.voice.channel.id in chunk and Channel == None:
+                            vc = True
+                            voice = ctx.author.voice.channel.id
+                        if vc != None and Channel != None:
+                            voice = int(Channel)
+                        if vc == None:
                             await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'transfer':
-                        if vc != None:
-                            await menu.transfer(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.transfer(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    #elif Menu.lower() == 'co-owner':
-                    #    if vc != None:
-                    #        await menu.co_owner(self, ctx, cur, int(Channel))
-                    #    elif ctx.author.voice:
-                    #        if ctx.author.voice.channel.id in chunk:
-                    #            await menu.co_owner(self, ctx, cur, ctx.author.voice.channel.id)
-                    #        else:
-                    #            await menu.user(self, ctx, cur)
-                    #    else:
-                    #        await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'permanent':
-                        if vc != None:
-                            await menu.permanent(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.permanent(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'name':
-                        if vc != None:
-                            await menu.name(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.name(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'bitrate':
-                        if vc != None:
-                            await menu.bitrate(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.bitrate(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'limit':
-                        if vc != None:
-                            await menu.user_limit(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.user_limit(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'position':
-                        if vc != None:
-                            await menu.position(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.position(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'category':
-                        if vc != None:
-                            await menu.category(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.category(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'overwrite':
-                        if vc != None:
-                            await menu.overwrite(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.overwrite(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'view':
-                        if vc != None:
-                            await menu.view(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.view(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'connect':
-                        if vc != None:
-                            await menu.connect(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.connect(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'speak':
-                        if vc != None:
-                            await menu.speak(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.speak(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'stream':
-                        if vc != None:
-                            await menu.stream(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.stream(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'move':
-                        if vc != None:
-                            await menu.move(self, ctx, cur, int(Channel))
-                        elif ctx.author.voice:
-                            if ctx.author.voice.channel.id in chunk:
-                                await menu.move(self, ctx, cur, ctx.author.voice.channel.id)
-                            else:
-                                await menu.user(self, ctx, cur)
-                        else:
-                            await menu.user(self, ctx, cur)
-                    elif Menu.lower() == 'user':
-                        await menu.user_settings(self, ctx, cur)
-                    else:
-                        await menu.user(self, ctx, cur)
-                else:
-                    await menu.user(self, ctx, cur)
+                            return
+                        await getattr(menu, Menu)(self, ctx, cur, voice) # return?
+                        return
+                await menu.user(self, ctx, cur)
+                return
             finally:
                 conn.commit()
                 cur.close()
@@ -242,7 +99,7 @@ class Settings(commands.Cog):
         else:
             raise error
 
-class menu:
+class menu(object):
     def __init_(self, bot):
         self.bot = bot
 
@@ -301,7 +158,7 @@ class menu:
                     return
                 elif wfc == '3' or 'user' in wfc or 'setting' in wfc:
                     await msg.delete()
-                    await menu.user_settings(self, context, cursor)
+                    await menu.settings(self, context, cursor)
                     return
                 else:
                     await context.send(menu.invalid(self))
@@ -345,6 +202,10 @@ class menu:
                 for c in context.guild.channels:
                     instance = isinstance(c, discord.VoiceChannel)
                     if wfc == c.name.lower() and instance or wfc == str(c.id) and instance or wfc == c.mention.lower() and instance or wfc == 'none' and auto_name != 'None':
+                        cursor.execute(f"SELECT voicechl FROM vclist;")
+                        vclist = cursor.fetchall()
+                        if [item for item in vclist if c.id in item]:
+                            break
                         if wfc == 'none':
                             place = 'None'
                             clean = 'NULL'
@@ -425,10 +286,9 @@ class menu:
                 await context.send(f"```py\n# Personal Voice Channel\n```\n**❗CHANNEL DENIED❗**\n\n```py\n# {context.author.name} already has a voice channel created\n```")
                 return
         vc = await context.guild.create_voice_channel(name=f"💌{context.author.name}")
-        cursor.execute(f"INSERT INTO vclist (voicechl, owner, members, static) VALUES ('{vc.id}', '{context.author.id}', '1', 'f');")
+        cursor.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{vc.id}', '{context.author.id}', 'f');")
         content = f"```py\n# {context.author.name} | Personal Voice Channel\n```\n💌 **CHANNEL CREATED** 💌\n\n```py\n# name / id: {vc.name} / {vc.id}\n```"
         await context.send(content)
-        await menu.confirm(self, context, cursor, vc.id)
         return
 
     async def manage(self, context, cursor):
@@ -763,7 +623,7 @@ class menu:
             tip = "Channel will NOT be deleted when no members are present"
             cursor.execute(f"UPDATE vclist SET static = 'TRUE' WHERE voicechl = '{vc.id}';")
         await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **{change}** 💌\n\n```py\n# {tip}\n```")
-        await menu.confirm(self, context, cursor, channel)
+        return
 
     async def name(self, context, cursor, channel):
         def verify(v):
@@ -797,7 +657,6 @@ class menu:
                     await msg.delete()
                     await vc.edit(name=wf.content, reason="Name Changed")
                     await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **NAME CHANGED** 💌\n\n```py\n# new name: {vc.name}\n```")
-                    await menu.confirm(self, context, cursor, channel)
                     return
             except asyncio.TimeoutError:
                 await msg.delete()
@@ -836,7 +695,6 @@ class menu:
                     await msg.delete()
                     await vc.edit(bitrate=int(wfc), reason="Bitrate Changed")
                     await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **BITRATE CHANGED** 💌\n\n```py\n# new bitrate: {vc.bitrate}\n```")
-                    await menu.confirm(self, context, cursor, channel)
                     return
                 else:
                     await context.send(menu.invalid(self))
@@ -877,7 +735,6 @@ class menu:
                     await msg.delete()
                     await vc.edit(user_limit=int(wfc), reason="User Limit Changed")
                     await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit : {vc.user_limit}\n```")
-                    await menu.confirm(self, context, cursor, channel)
                     return
                 else:
                     await context.send(menu.invalid(self))
@@ -946,7 +803,6 @@ class menu:
                         pvc = self.bot.get_channel(int(vid[-1]))
                     await vc.edit(position=pvc.position + newpos, reason="Moving Channel")
                     await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **CHANNEL MOVED** 💌\n\n```py\n# new position: {vc.position}\n```")
-                    await menu.confirm(self, context, cursor, channel)
                     return
                 else:
                     await context.send(menu.invalid(self))
@@ -1012,13 +868,11 @@ class menu:
                         catchl = self.bot.get_channel(int(cid[pos]))
                         await vc.edit(category=catchl, reason="Moving to Category")
                         await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **CHANNEL MOVED** 💌\n\n```py\n# new category: {vc.category.name}\n```")
-                        await menu.confirm(self, context, cursor, channel)
                         return
                     elif wfc == 'none':
                         catchl = None
                         await vc.edit(category=catchl, reason="Moving out of Category")
                         await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **CHANNEL MOVED** 💌\n\n```py\n# new category: None\n```")
-                        await menu.confirm(self, context, cursor, channel)
                         return
                 else:
                     await context.send(menu.invalid(self))
@@ -1228,6 +1082,9 @@ class menu:
                                         invalid = await context.send(menu.invalid(self))
                                         await invalid.delete(delay=1)
                                 break
+                        #elif wf.mentions:
+                        #    await context.send(f"{wf.mentions[0].name} selected.")
+                        #    return
                         elif m == context.guild.members[-1]:
                             await wf.delete()
                             invalid = await context.send(menu.invalid(self))
@@ -1495,7 +1352,7 @@ class menu:
                         if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
                             if m == context.guild.me:
                                 await wf.delete()
-                                await msg.edit(content=f"```py\n'Menu for Speak' - {vc.name} | {prefix}vc Speak [CHANNEL ID]\n```\nPlease enter valid `members` or type `everyone` to edit their permission\\n\n**Please don't touch my permissions**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
+                                await msg.edit(content=f"```py\n'Menu for Speak' - {vc.name} | {prefix}vc Speak [CHANNEL ID]\n```\nPlease enter valid `members` or type `everyone` to edit their permission\n\n**Please don't touch my permissions**\n\n```py\n# Speak allows users to talk in the voice channel.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
                                 break
                             else:
                                 await wf.delete()
@@ -1872,7 +1729,7 @@ class menu:
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
 
-    async def confirm(self, context, cursor, channel):
+    async def settings(self, context, cursor):
         def verify(v):
             return v.content and v.author == context.author and v.channel == context.channel
         counter = 0
@@ -1883,41 +1740,7 @@ class menu:
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Confirmation' - {context.author.name}\n```\n{context.author.mention}, Enter `back` to change settings or enter `exit` to finish"
-                msg = await context.send(content)
-            try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'exit':
-                    await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
-                    return
-                elif wfc == 'back':
-                    await msg.delete()
-                    await menu.properties(self, context, cursor, channel)
-                    return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
-                    await msg.delete()
-                    return
-                else:
-                    await context.send(menu.invalid(self))
-            except asyncio.TimeoutError:
-                await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
-                return
-
-    async def user_settings(self, context, cursor):
-        def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
-        counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        while True:
-            counter = counter + 1
-            if counter == 1:
-                content = f"```py\n'User Settings' - {context.author.name} | {prefix}vc User\n```\nWork in progress\n\n```py\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                content = f"```py\n'User Settings' - {context.author.name} | {prefix}vc Settings\n```\nWork in progress\n\n```py\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)

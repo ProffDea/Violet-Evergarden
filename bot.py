@@ -49,9 +49,12 @@ async def on_ready():
         conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
     finally:
         cur = conn.cursor()
-        cur.execute("CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT); INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING; CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT); CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);")
-        cur.execute("CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL);")
-        cur.execute("SELECT * FROM bot WHERE name = 'Status';")
+        cur.execute("""CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT);
+                        INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING;
+                        CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT);
+                        CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);
+                        CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL);
+                        SELECT * FROM bot WHERE name = 'Status';""")
         rows = cur.fetchall()
         for r in rows:
             if r[0] == "Status":

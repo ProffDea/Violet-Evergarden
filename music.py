@@ -1,4 +1,6 @@
-import discord, asyncio, os
+import discord
+import asyncio
+import os
 from discord.ext import commands
 import lavalink
 from discord import utils
