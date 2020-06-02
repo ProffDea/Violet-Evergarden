@@ -95,6 +95,7 @@ class Commands(commands.Cog):
             return
 
     @commands.command(name='Ping', help="Shows bot's latency in milliseconds.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def ping(self, ctx):
         try:
             await ctx.send(f'Pong: {round(self.bot.latency * 1000)}ms')
@@ -102,6 +103,7 @@ class Commands(commands.Cog):
             return
 
     @commands.command(name='Status', help="Changes bot's status message.") # Anyone can use this command and it changes the bot's status.
+    @commands.cooldown(1, 300, commands.BucketType.default)
     async def status(self, ctx, *, changestatus=None): # example(*, args) : ex. "Example text" | example(*args) : ex. "Example" "text"
         try:
             DATABASE_URL = os.environ['DATABASE_URL']
@@ -136,6 +138,7 @@ class Commands(commands.Cog):
             conn.close()
 
     @commands.command(name='Uptime', help="Checks how long the bot has been online for.")
+    @commands.cooldown(1, 10, commands.BucketType.user)
     async def uptime(self, ctx):
         try:
             lt = time.time()
@@ -163,6 +166,7 @@ class Commands(commands.Cog):
 
 
     @commands.command(name='Avatar', aliases=['PFP', 'Picture'], help="Gets a valid user's profile picture.")
+    @commands.cooldown(1, 5, commands.BucketType.user)
     async def avatar(self, ctx, *, Member: discord.Member=None):
         try:
             if Member == None:
