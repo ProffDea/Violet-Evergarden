@@ -3,7 +3,6 @@ import os
 import psycopg2
 import discord
 import time
-import datetime
 from discord.ext import commands
 
 def TestServerEmoji():
@@ -21,11 +20,16 @@ class Events(commands.Cog):
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
-            cur = conn.cursor()
-            cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{guild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
-            conn.commit()
-            cur.close()
-            conn.close()
+            try:
+                cur = conn.cursor()
+                cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{guild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
+                #for member in guild.members:
+                #    if member.bot == False:
+                #        cur.execute(f"INSERT INTO members (user_id) VALUES ('{member.id}') ON CONFLICT (user_id) DO NOTHING;")
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
 
     @commands.Cog.listener()
     async def on_guild_remove(self, guild):

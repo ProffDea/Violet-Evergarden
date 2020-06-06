@@ -31,6 +31,7 @@ def miss_permission():
 bot = commands.Bot(command_prefix=cstmprefix, description=miss_permission(), case_insensitive=True)
 bot.global_ft = time.time()
 bot.voice_cool = {}
+bot.name_cool = {}
 
 initial_extensions = ['commands', 'guild', 'events'] # Where you put python file names when making new cogs
 if __name__ == '__main__':
@@ -48,51 +49,56 @@ async def on_ready():
     except KeyError:
         conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
     finally:
-        cur = conn.cursor()
-        cur.execute("""CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT);
-                        INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING;
-                        CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT);
-                        CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);
-                        CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, status BOOLEAN NOT NULL);
-                        SELECT * FROM bot WHERE name = 'Status';""")
-        rows = cur.fetchall()
-        for r in rows:
-            if r[0] == "Status":
-                cstmstatus = r[1]
-                break
-        await bot.change_presence(activity=discord.Game(cstmstatus))
-        if len(bot.guilds) == 1:
-            sver = 'server'
-        else:
-            sver = 'servers'
-        if cstmstatus == '':
-            statusmsg = 'No status'
-        else:
-            statusmsg = cstmstatus
-        print(f'\n{bot.user.name} is online in {len(bot.guilds)} {sver}.\n\nStatus:\n{statusmsg}\n')
-        for inguilds in bot.guilds:
-            cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{inguilds.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
-        cur.execute("SELECT guild, autovc FROM servers;")
-        allguilds = cur.fetchall()
-        for g in allguilds:
-            if bot.get_guild(g[0]) == None:
-                cur.execute(f"DELETE FROM servers WHERE guild = '{g[0]}';")
-                continue
-            if g[1] == None:
-                pass
+        try:
+            cur = conn.cursor()
+            cur.execute("""CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT);
+                            INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING;
+                            CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT);
+                            CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);
+                            CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, name_generator TEXT []);
+                            SELECT * FROM bot WHERE name = 'Status';""")
+            rows = cur.fetchall()
+            for r in rows:
+                if r[0] == "Status":
+                    cstmstatus = r[1]
+                    break
+            await bot.change_presence(activity=discord.Game(cstmstatus))
+            if len(bot.guilds) == 1:
+                sver = 'server'
             else:
-                if bot.get_channel(g[1]) == None:
-                    cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{g[0]}';")
+                sver = 'servers'
+            if cstmstatus == '':
+                statusmsg = 'No status'
+            else:
+                statusmsg = cstmstatus
+            print(f'\n{bot.user.name} is online in {len(bot.guilds)} {sver}.\n\nStatus:\n{statusmsg}\n')
+            for inguild in bot.guilds:
+                cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{inguild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
+                #for member in inguild.members:
+                #    if member.bot == False:
+                #        cur.execute(f"INSERT INTO members (user_id) VALUES ('{member.id}') ON CONFLICT (user_id) DO NOTHING;")
+            cur.execute("SELECT guild, autovc FROM servers;")
+            allguilds = cur.fetchall()
+            for g in allguilds:
+                if bot.get_guild(g[0]) == None:
+                    cur.execute(f"DELETE FROM servers WHERE guild = '{g[0]}';")
                     continue
-        cur.execute("SELECT voicechl FROM vclist;")
-        lists = cur.fetchall()
-        for l in lists:
-            if bot.get_channel(l[0]) == None:
-                cur.execute(f"DELETE FROM vclist WHERE voicechl = '{l[0]}';")
-                continue
-        conn.commit()
-        cur.close()
-        conn.close()
+                if g[1] == None:
+                    pass
+                else:
+                    if bot.get_channel(g[1]) == None:
+                        cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{g[0]}';")
+                        continue
+            cur.execute("SELECT voicechl FROM vclist;")
+            lists = cur.fetchall()
+            for l in lists:
+                if bot.get_channel(l[0]) == None:
+                    cur.execute(f"DELETE FROM vclist WHERE voicechl = '{l[0]}';")
+                    continue
+        finally:
+            conn.commit()
+            cur.close()
+            conn.close()
 
 load_dotenv()
 bot.run(os.getenv('token'))

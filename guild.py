@@ -2,6 +2,8 @@ import discord
 import os
 import psycopg2
 import asyncio
+import time
+import datetime
 from discord.ext import commands
 
 class Settings(commands.Cog):
@@ -91,7 +93,7 @@ class Settings(commands.Cog):
     @vc.error
     async def vc_error(self, ctx, error):
         if isinstance(error, commands.CommandInvokeError):
-            await ctx.send(f"💌 | {ctx.author.mention}'s menu has been exited due to error (menu most likely got deleted).")
+            await ctx.send(f"💌 | **{ctx.author.name}**'s menu has been exited due to error.")
             raise error
         elif isinstance(error, commands.CommandOnCooldown):
             await ctx.send(error)
@@ -377,7 +379,15 @@ class menu(object):
                 rows = cursor.fetchall()
                 for r in rows:
                     static = r[0]
-                content = f"{notif}```py\n'Menu for Properties' - {vc.name} | {prefix}vc Properties [CHANNEL ID]\n```\n`1.)` `Owner Transfership` - current owner: **{context.author.name}**\n`2.)` `Add Co-Owner` - **Work in Progress**\n`3.)` `Permanent Channel` - **{static}**\n`4.)` `Channel Name` - **{vc.name}**\n`5.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`6.)` `User Limit` - **{vc.user_limit}**\n`7.)` `Channel Position` - **{vc.position}**\n`8.)` `Channel Category` - **{vc.category}**\n`9.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                if context.author.id in self.bot.name_cool:
+                    sec = int(round(time.time() - self.bot.name_cool[context.author.id]['log']))
+                else:
+                    sec = 301
+                if sec <= 300:
+                    name_cd = f" | On **{5-(sec//60)%60}** minute cooldown"
+                else:
+                    name_cd = ''
+                content = f"{notif}```py\n'Menu for Properties' - {vc.name} | {prefix}vc Properties [CHANNEL ID]\n```\n`1.)` `Owner Transfership` - current owner: **{context.author.name}**\n`2.)` `Add Co-Owner` - **Work in Progress**\n`3.)` `Permanent Channel` - **{static}**\n`4.)` `Channel Name` - **{vc.name}**{name_cd}\n`5.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`6.)` `User Limit` - **{vc.user_limit}**\n`7.)` `Channel Position` - **{vc.position}**\n`8.)` `Channel Category` - **{vc.category}**\n`9.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
@@ -625,42 +635,96 @@ class menu(object):
         await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **{change}** 💌\n\n```py\n# {tip}\n```")
         return
 
-    async def name(self, context, cursor, channel):
+    async def name(self, ctx, cur, chl):
+        if ctx.author.id in self.bot.name_cool:
+            sec = int(round(time.time() - self.bot.name_cool[ctx.author.id]['log']))
+        else:
+            sec = 301
+        if sec <= 300:
+            if 5-(sec//60)%60 == 1:
+                minute = 'minute'
+            else:
+                minute = 'minutes'
+            await ctx.send(f"Please wait **{5-(sec//60)%60}** {minute} before changing the name again")
+            return
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
-        counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        vc = self.bot.get_channel(channel)
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+        counter, vc = 0, self.bot.get_channel(chl)
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Menu for Name' - {vc.name} | {prefix}vc Name [CHANNEL ID]\n```\nEnter a `message` to be the name for the selected voice channel\n\n```py\n# Displays the user's input as the voice channel's name\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                msg = await ctx.send(f"```py\nName Menu - Current Name: '{vc.name}' | Current ID: '{vc.id}' | Shortcut: 'Vc Name [CHANNEL ID]'\n```\nEnter a name as a `message` to change channel name\n\n⬅️ `Go back`\n🇽 `Exit menu`\n\n```py\n# 5 minute cooldown after changing name\n```")
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', timeout=60, check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.properties(self, context, cursor, channel)
+                    await menu.properties(self, ctx, cur, chl)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
-                    return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
-                    await msg.delete()
+                    await ctx.send(f"💌 | **{ctx.author.name}**'s menu has been exited.")
                     return
                 else:
                     await msg.delete()
-                    await vc.edit(name=wf.content, reason="Name Changed")
-                    await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **NAME CHANGED** 💌\n\n```py\n# new name: {vc.name}\n```")
+                    name = result.content
+                    await menu.name_confirm(self, ctx, cur, chl, name)
                     return
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(f"💌 | **{ctx.author.name}**'s menu has been exited due to timeout.")
+                return
+
+    async def name_confirm(self, ctx, cur, chl, name):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+        counter, vc = 0, self.bot.get_channel(chl)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                msg = await ctx.send(f"```py\nName Menu - Current Name: '{vc.name}' | Current ID: '{vc.id}' | Shortcut: 'Vc Name [CHANNEL ID]'\n```\nAre you sure you wish to change `{vc.name}`'s channel name?\n\n⬅️ `Go back`\n🇽 `Exit menu`\n☑️ Change Name to `{name}`\n\n```py\n# 5 minute cooldown after changing name\n```")
+                await msg.add_reaction('⬅️')
+                await msg.add_reaction('🇽')
+                await msg.add_reaction('☑️')
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', timeout=60, check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.name(self, ctx, cur, chl)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(f"💌 | **{ctx.author.name}**'s menu has been exited.")
+                    return
+                elif '☑️' in str(result):
+                    await msg.delete()
+                    old = vc.name
+                    await vc.edit(name=name, reason="Name Changed")
+                    self.bot.name_cool.update({ctx.author.id : {'log' : time.time()}})
+                    await ctx.send(f"""```py\n# Name Menu - Previous Name: '{old}' | Current ID: '{vc.id}' | Shortcut: 'Vc Name [CHANNEL ID]'\n```\n💌 **NAME CHANGED TO** "{vc.name}" 💌\n\n```py\n# Thank you for using the automated voice channel feature\n```""")
+                    return
+                else:
+                    await result.add_reaction("❌")
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(f"💌 | **{ctx.author.name}**'s menu has been exited due to timeout.")
                 return
 
     async def bitrate(self, context, cursor, channel):
@@ -1740,7 +1804,7 @@ class menu(object):
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'User Settings' - {context.author.name} | {prefix}vc Settings\n```\nWork in progress\n\n```py\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
+                content = f"```py\n'User Settings' - {context.author.name} | {prefix}vc Settings\n```\nWork in Progress\n\n```py\n# This is where all settings for {context.author.name} is located at\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
                 msg = await context.send(content)
             try:
                 wf = await self.bot.wait_for('message', timeout=60, check=verify)
