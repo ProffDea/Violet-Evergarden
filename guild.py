@@ -655,13 +655,20 @@ class menu(object):
         while True:
             counter = counter + 1
             if counter == 1:
-                msg = await ctx.send(f"```py\nName Menu - Current Name: '{vc.name}' | Current ID: '{vc.id}' | Shortcut: 'Vc Name [CHANNEL ID]'\n```\nEnter a name as a `message` to change channel name\n\n⬅️ `Go back`\n🇽 `Exit menu`\n\n```py\n# 5 minute cooldown after changing name\n```")
+                e = discord.Embed(
+                    title = "Name Menu",
+                    description = "Enter a name as a `message` to change channel name\n\n⬅️ Go back\n🇽 Exit menu\n\n5 minute cooldown after changing name",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Name [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {vc.name}\nID: {vc.id}")
+                msg = await ctx.send(embed=e)
                 await msg.add_reaction("⬅️")
                 await msg.add_reaction("🇽")
             try:
                 done, pending = await asyncio.wait([
                                 self.bot.wait_for('message', timeout=60, check=verify),
-                                self.bot.wait_for('reaction_add', timeout=60, check=verify_r)
+                                self.bot.wait_for('reaction_add', check=verify_r)
                                 ], return_when=asyncio.FIRST_COMPLETED)
                 result = done.pop().result()
                 for future in pending:
@@ -693,14 +700,21 @@ class menu(object):
         while True:
             counter = counter + 1
             if counter == 1:
-                msg = await ctx.send(f"```py\nName Menu - Current Name: '{vc.name}' | Current ID: '{vc.id}' | Shortcut: 'Vc Name [CHANNEL ID]'\n```\nAre you sure you wish to change `{vc.name}`'s channel name?\n\n⬅️ `Go back`\n🇽 `Exit menu`\n☑️ Change Name to `{name}`\n\n```py\n# 5 minute cooldown after changing name\n```")
+                e = discord.Embed(
+                    title = "Name Menu",
+                    description = f"Are you sure you wish to change `{vc.name}`'s channel name?\n\n⬅️ Go back\n🇽 Exit menu\n☑️ Change Name to `{name}`\n\n5 minute cooldown after changing name",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Name [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {vc.name}\nID: {vc.id}")
+                msg = await ctx.send(embed=e)
                 await msg.add_reaction('⬅️')
                 await msg.add_reaction('🇽')
                 await msg.add_reaction('☑️')
             try:
                 done, pending = await asyncio.wait([
                                 self.bot.wait_for('message', timeout=60, check=verify),
-                                self.bot.wait_for('reaction_add', timeout=60, check=verify_r)
+                                self.bot.wait_for('reaction_add', check=verify_r)
                                 ], return_when=asyncio.FIRST_COMPLETED)
                 result = done.pop().result()
                 for future in pending:
@@ -718,7 +732,14 @@ class menu(object):
                     old = vc.name
                     await vc.edit(name=name, reason="Name Changed")
                     self.bot.name_cool.update({ctx.author.id : {'log' : time.time()}})
-                    await ctx.send(f"""```py\n# Name Menu - Previous Name: '{old}' | Current ID: '{vc.id}' | Shortcut: 'Vc Name [CHANNEL ID]'\n```\n💌 **NAME CHANGED TO** "{vc.name}" 💌\n\n```py\n# Thank you for using the automated voice channel feature\n```""")
+                    e = discord.Embed(
+                        title = "NAME CHANGED",
+                        description = f"Thank you for using automated voice channels",
+                        color = discord.Color.purple()
+                    )
+                    e.set_author(name=f"Vc Name [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                    e.set_footer(text=f"New Name: {vc.name}\nOld Name: {old}\nID: {vc.id}")
+                    await ctx.send(embed=e)
                     return
                 else:
                     await result.add_reaction("❌")

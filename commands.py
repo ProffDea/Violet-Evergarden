@@ -112,7 +112,7 @@ class Commands(commands.Cog):
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
             cur =conn.cursor()
-            cur.execute(f"SELECT status FROM members WHERE user_id = '{ctx.author.id}';")
+            cur.execute(f"SELECT status_bl FROM members WHERE user_id = '{ctx.author.id}';")
             rows = cur.fetchall()
             for r in rows:
                 if r[0] == False:
@@ -144,19 +144,7 @@ class Commands(commands.Cog):
             lt = time.time()
             d = int(round(lt - self.bot.global_ft))
             up = str(datetime.timedelta(seconds=d))
-            cont = f"**{self.bot.user.name}'s** uptime: {up}"
-            msg = await ctx.send(cont)
-            counter = 0
-            add_sec = 0
-            while counter < 5:
-                counter = counter + 1
-                add_sec = add_sec + 1
-                await asyncio.sleep(1)
-                d = int(round(lt - self.bot.global_ft)) + add_sec
-                up = str(datetime.timedelta(seconds=d))
-                cont = f"**{self.bot.user.name}'s** uptime: {up}"
-                await msg.edit(content=cont)
-            await msg.edit(content=cont + "\n💌 | Exit")
+            await ctx.send(f"💌 | **{self.bot.user.name}'s** uptime: {up}")
         except discord.Forbidden:
             return
     @uptime.error
@@ -190,8 +178,8 @@ class Commands(commands.Cog):
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
-            cur = conn.cursor()
             try:
+                cur = conn.cursor()
                 try:
                     if Name.lower() == 'status':
                         member = self.bot.get_user(int(ID))
@@ -203,9 +191,10 @@ class Commands(commands.Cog):
                     await ctx.send("User ID is required.")
             except AttributeError:
                 await ctx.send("Member could not be found.")
-            conn.commit()
-            cur.close()
-            conn.close()
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
 
 def setup(bot):
     bot.add_cog(Commands(bot))
