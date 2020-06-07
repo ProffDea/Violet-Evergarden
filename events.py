@@ -3,6 +3,7 @@ import os
 import psycopg2
 import discord
 import time
+import random
 from discord.ext import commands
 
 def TestServerEmoji():
@@ -130,10 +131,27 @@ class Events(commands.Cog):
                                 self.bot.voice_cool[member.id]['dm'] = True
                             return
                         else:
-                            clone = await after.channel.clone(name=f'💌{member.name}', reason=f"{member.name} has created this VC.")
-                            cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
-                            await member.move_to(clone)
-                            self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
+                            if member.guild.id == 648977487744991233: # Carter's bullshit, delete if needed
+                                Carter_names = ["Clappin' Salmon", 'Hand-Cranked Pickle', 'Burger Pond', 'Koi_Salad M1911 dusty drab', 'The Onion_Gamer1836',
+                                                'Shaggy Shrimp (Onion layered)', 'Holy Peanut (No Shell)', 'Kinetic Kiwi (A/C Powered)', 'Perplexed Pickle (Jar included)', '5$ Crunch Box (Chalupa Craving)',
+                                                'Cereal Sock', 'Tummy Pillow', 'Deck of Pears', 'Pint of Crows', 'Eel Crumbs ',
+                                                'Purebred Turnip', 'Cooing_Onion1094', 'Tuna Paste', 'Unyielding_Slipper ', 'GOTHIC_ONION']
+                                clone = await after.channel.clone(name=random.choice(Carter_names), reason=f"{member.name} has created this VC.")
+                                cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
+                                await member.move_to(clone)
+                                self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
+                            else:
+                                cur.execute(f"SELECT unnest(name_generator) FROM members WHERE user_id = '{member.id}';")
+                                name_list = cur.fetchall()
+                                if name_list == []:
+                                    vc_name = f'💌{member.name}'
+                                else:
+                                    pick = random.choice(name_list)
+                                    vc_name = pick[0]
+                                clone = await after.channel.clone(name=vc_name, reason=f"{member.name} has created this VC.")
+                                cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
+                                await member.move_to(clone)
+                                self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
                 # Checking if hard joining
                 if before.channel == None:
                     pass
