@@ -2008,6 +2008,9 @@ class menu(object):
         name_list, spread = cur.fetchall(), ''
         if name_list == []:
             spread += "```py\nNo names found\n```"
+            empty = True
+        else:
+            empty = False
         for num, name in enumerate(name_list):
             if len(name_list) == 1:
                 spread += f"```py\n{num + 1}.) {name[0]}\n```"
@@ -2021,9 +2024,13 @@ class menu(object):
         while True:
             counter = counter + 1
             if counter == 1:
+                if empty == False:
+                    delete = '⚠️ Delete all names\n'
+                else:
+                    delete = ''
                 e = discord.Embed(
                     title = "List of Randomizer Names Menu",
-                    description = f"{spread}\n⬅️ Go back\n🇽 Exit menu\n⚠️ Delete all names\n\nIf you wish to delete a name, select the name by it's number",
+                    description = f"{spread}\n⬅️ Go back\n🇽 Exit menu\n{delete}\nIf you wish to delete a name, select the name by it's number",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Randomizer_View", icon_url=ctx.author.avatar_url)
@@ -2031,7 +2038,8 @@ class menu(object):
                 msg = await ctx.send(embed=e)
                 await msg.add_reaction("⬅️")
                 await msg.add_reaction("🇽")
-                await msg.add_reaction("⚠️")
+                if empty == False:
+                    await msg.add_reaction("⚠️")
 
             try:
                 done, pending = await asyncio.wait([
@@ -2050,11 +2058,34 @@ class menu(object):
                     await msg.delete()
                     await ctx.send(menu.exit(self, ctx))
                     return
-                elif '⚠️' in str(result):
-                    await msg.delete()
-                    cur.execute(f"UPDATE members SET name_generator = NULL WHERE user_id = '{ctx.author.id}';")
-                    await ctx.send("All names have been deleted!")
-                    return
+                elif '⚠️' in str(result) and empty == False:
+                    def verify_c(reaction, user):
+                        return user == ctx.author and reaction.message.id == confirm.id
+
+                    confirm_count = 0
+                    while True:
+                        confirm_count = confirm_count + 1
+                        if confirm_count == 1:
+                            confirm = await ctx.send(f"{ctx.author.mention} Are you sure you want to delete all names?")
+                            await confirm.add_reaction("✅")
+                            await confirm.add_reaction("❌")
+                        reaction, user = await self.bot.wait_for('reaction_add', timeout=5, check=verify_c)
+
+                        if '✅' == str(reaction):
+                            await msg.delete()
+                            await confirm.delete()
+                            cur.execute(f"UPDATE members SET name_generator = NULL WHERE user_id = '{user.id}';")
+                            await menu.randomizer_view(self, ctx, cur)
+                            return
+                        elif '❌' == str(reaction):
+                            await confirm.delete()
+                            try:
+                                await msg.remove_reaction("⚠️", user)
+                                break
+                            except discord.NotFound:
+                                break
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
                 elif result.content.isdigit() == False:
                     await result.add_reaction("❌")
                 elif int(result.content) <= len(name_list) and int(result.content) != 0:
