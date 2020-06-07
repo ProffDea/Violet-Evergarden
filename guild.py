@@ -1838,7 +1838,7 @@ class menu(object):
 
         options, spread = {"Channel Name Randomizer" : "randomizer"}, ''
         for num, option in enumerate(options.keys()):
-            spread += f"`{num + 1}.)` {option}\n"
+            spread += f"{num + 1}.) {option}\n"
 
         counter = 0
         while True:
@@ -1846,7 +1846,7 @@ class menu(object):
             if counter == 1:
                 e = discord.Embed(
                     title = "User Settings Menu",
-                    description = f"{spread}\n⬅️ Go back\n🇽 Exit menu\n\nThis is where all settings for {ctx.author.name} is located at",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nThis is where all settings for {ctx.author.name} is located at",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Settings", icon_url=ctx.author.avatar_url)
