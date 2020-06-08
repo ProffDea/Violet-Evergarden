@@ -298,7 +298,7 @@ class menu(object):
 
                 if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.settings(self, ctx, cur)
+                    await menu.user(self, ctx, cur)
                     return
                 elif '🇽' in str(result):
                     await msg.delete()
