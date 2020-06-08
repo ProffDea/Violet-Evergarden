@@ -24,9 +24,6 @@ class Events(commands.Cog):
             try:
                 cur = conn.cursor()
                 cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{guild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
-                #for member in guild.members:
-                #    if member.bot == False:
-                #        cur.execute(f"INSERT INTO members (user_id) VALUES ('{member.id}') ON CONFLICT (user_id) DO NOTHING;")
             finally:
                 conn.commit()
                 cur.close()
@@ -77,11 +74,9 @@ class Events(commands.Cog):
                 cur.execute(f"SELECT autovc FROM servers WHERE guild = '{channel.guild.id}';")
                 autovc = cur.fetchall()
                 for a in autovc:
-                    if a[0] == None:
+                    if a[0] == channel.id:
+                        cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{channel.guild.id}'")
                         break
-                    elif self.bot.get_channel(a[0]) == None:
-                        cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{a[0]}'")
-                        return
                 cur.execute("SELECT voicechl FROM vclist;")
                 vclist = cur.fetchall()
                 for vl in vclist:

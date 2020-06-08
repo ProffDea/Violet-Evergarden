@@ -91,7 +91,7 @@ class Commands(commands.Cog):
             linkembed.add_field(name="`🏠 Squee's House Category`", value='[Click Here](https://discordapp.com/channels/647205092029759488/647285590659694612/647709461317812246)', inline=True)
 
             await ctx.send(embed=linkembed)
-        except discord.Forbidden:
+        except:
             return
 
     @commands.command(name='Ping', help="Shows bot's latency in milliseconds.")
@@ -99,7 +99,7 @@ class Commands(commands.Cog):
     async def ping(self, ctx):
         try:
             await ctx.send(f'Pong: {round(self.bot.latency * 1000)}ms')
-        except discord.Forbidden:
+        except:
             return
 
     @commands.command(name='Status', help="Changes bot's status message.") # Anyone can use this command and it changes the bot's status.
@@ -166,7 +166,7 @@ class Commands(commands.Cog):
             )
             e.set_image(url=Member.avatar_url)
             await ctx.send(embed=e)
-        except discord.Forbidden:
+        except:
             return
 
     @commands.command(name='BL', aliases=['Blacklist'], help="Prevents specific user by ID from using a specific command.")
