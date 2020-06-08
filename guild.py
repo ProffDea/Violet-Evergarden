@@ -117,62 +117,81 @@ class menu(object):
     def invalid(self):
         return 'Please choose a valid option.'
 
-    async def user(self, context, cursor):
-        def verify(v): 
-            return v.content and v.author == context.author and v.channel == context.channel 
-        counter = 0 
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'") 
-        rows = cursor.fetchall() 
-        for r in rows: 
-            prefix = r[0] 
-        while True: 
-            counter = counter + 1  
-            perms = context.channel.permissions_for(context.author)  
-            manage = perms.manage_channels  
-            if manage == True:  
-                access = ""  
-            elif manage == False:  
-                access = " - **Access Denied**"  
-            if counter == 1:  
-                cursor.execute(f"SELECT autovc FROM servers WHERE guild = '{context.guild.id}';")  
-                rows = cursor.fetchall() 
-                for r in rows: 
-                    if r[0] == None: 
-                        auto_name = 'None' 
-                        break 
-                    else: 
-                        get_chl = self.bot.get_channel(r[0]) 
-                        auto_name = get_chl.name
-                        break
-                content = f"```py\n'Menu for User' - {context.author.name}\n```\n**`1.)`** `Auto Voice Channel :` {auto_name}{access}\n`2.)` `Personal Voice Channel`\n`3.)` `User Settings`\n\n```py\n# Enter one of the corresponding options\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+    async def user(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
+        auto = cur.fetchall()
+        for a in auto:
+            if a[0] == None:
+                auto_name = 'None'
+                break
+            else:
+                get_chl = self.bot.get_channel(a[0])
+                auto_name = get_chl.name
+                break
+        options, spread = {f"Auto Voice Channel : {auto_name}" : "auto",
+                        "Personal Voice Channel" : "personal",
+                        "User Settings" : "settings"}, ''
+        perms = ctx.channel.permissions_for(ctx.author)
+        manage = perms.manage_channels
+        if manage == False:
+            options.pop(f"Auto Voice Channel : {auto_name}")
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+
+        counter = 0
+        info = False
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "User Menu",
+                    description = f"```py\n{spread}\n```\n🇽 Exit menu\nℹ️ More Information (Menu will stay intact)\n\nEnter one of the corresponding options",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("🇽")
+                await msg.add_reaction("ℹ️")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'exit':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}tvc' or wf.content == f'{prefix}tVC' or wf.content == f'{prefix}tVc' or wf.content == f'{prefix}tvC':
+                elif 'ℹ️' in str(result) and info == False:
+                    info = True
+                    await msg.clear_reaction("ℹ️")
+                    await ctx.send(""">>> **Auto Voice Channel**: This option will only be visible to users with manage channel permissions. Select a voice channel to be used as the main channel in the server to create personal voice channels upon joining it.
+**Personal Voice Channel**: Access everything to do with your own personal voice channels through this option
+**User Settings**: Change settings correlating to your account that'll effect your personal voice channels""")
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
-                    return
-                elif wfc == '1' and manage == True or 'auto' in wfc and manage == True:
-                    await msg.delete()
-                    await menu.auto(self, context, cursor)
-                    return
-                elif wfc == '2' or 'personal' in wfc:
-                    await msg.delete()
-                    await menu.personal(self, context, cursor)
-                    return
-                elif wfc == '3' or 'user' in wfc or 'setting' in wfc:
-                    await msg.delete()
-                    await menu.settings(self, context, cursor)
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
     async def auto(self, context, cursor):
@@ -242,46 +261,63 @@ class menu(object):
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
 
-    async def personal(self, context, cursor):
+    async def personal(self, ctx, cur):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        options, spread = {"Create Voice Channel" : "create",
+                        "Manage Voice Channels" : "manage"}, ''
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Menu for Personal Voice Channel' - {context.author.name} | {prefix}vc Personal\n```\n`1.)` `Create voice channel`\n`2.)` `Manage voice channels`\n\n```py\n# Personal voice channels are channels made for server members to edit to their heart's content\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "Personal Voice Channel Menu",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nPersonal voice channels are channels made for server members to customize",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Personal", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.user(self, context, cursor)
+                    await menu.settings(self, ctx, cur)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}tvc' or wf.content == f'{prefix}tVC' or wf.content == f'{prefix}tVc' or wf.content == f'{prefix}tvC':
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
-                    return
-                elif wfc == '1' or 'create' in wfc:
-                    await msg.delete()
-                    await menu.create(self, context, cursor)
-                    return
-                elif wfc == '2' or 'manage' in wfc:
-                    await msg.delete()
-                    await menu.manage(self, context, cursor)
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
     async def create(self, context, cursor):
@@ -1872,6 +1908,8 @@ class menu(object):
                     await msg.delete()
                     await ctx.send(menu.exit(self, ctx))
                     return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
                 elif result.content.isdigit() == False:
                     await result.add_reaction("❌")
                 elif int(result.content) <= len(options) and int(result.content) != 0:
@@ -1892,17 +1930,19 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
-        options, spread = {"Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view"}, ''
+        options, spread = {"Add Names" : "randomizer_add",
+                        "View/Edit Name List" : "randomizer_view"}, ''
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
 
         counter = 0
+        info = False
         while True:
             counter = counter + 1
             if counter == 1:
                 e = discord.Embed(
                     title = "Channel Name Randomizer Menu",
-                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nNames for personal voice channels will be picked at random",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\nℹ️ More information (Menu will stay intact)\n\nNames for personal voice channels will be picked at random",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Randomizer", icon_url=ctx.author.avatar_url)
@@ -1910,6 +1950,7 @@ class menu(object):
                 msg = await ctx.send(embed=e)
                 await msg.add_reaction("⬅️")
                 await msg.add_reaction("🇽")
+                await msg.add_reaction("ℹ️")
 
             try:
                 done, pending = await asyncio.wait([
@@ -1928,6 +1969,12 @@ class menu(object):
                     await msg.delete()
                     await ctx.send(menu.exit(self, ctx))
                     return
+                elif 'ℹ️' in str(result) and info == False:
+                    info = True
+                    await msg.clear_reaction("ℹ️")
+                    await ctx.send(f">>> The user (**{ctx.author.name}**) will be able to make and store a maximum of 30 custom made names.\nUpon the creation of the user's personal voice channel, 1 of these 30 names (or less) will be picked at random to represent the personal voice channel's name. \n\nNote: These names are global to all servers and the name will not be displayed but still stored if blacklisted in the server.")
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
                 elif result.content.isdigit() == False:
                     await result.add_reaction("❌")
                 elif int(result.content) <= len(options) and int(result.content) != 0:
@@ -1959,7 +2006,7 @@ class menu(object):
             if counter == 1:
                 e = discord.Embed(
                     title = "Add Names to Randomizer Menu",
-                    description = f"Enter a name as a `message` one by one\n\n⬅️ Go back\n🇽 Exit menu\n\nStore up to a maximum of 30 names",
+                    description = f"Enter a name as a `message` one by one\n\n⬅️ Go back\n🇽 Exit menu\n\nStore up to a maximum of 30 names\nMenu will stay open until timeout or reaction by emoji",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Randomizer_Add", icon_url=ctx.author.avatar_url)
@@ -2030,7 +2077,7 @@ class menu(object):
                     delete = ''
                 e = discord.Embed(
                     title = "List of Randomizer Names Menu",
-                    description = f"{spread}\n⬅️ Go back\n🇽 Exit menu\n{delete}\nIf you wish to delete a name, select the name by it's number",
+                    description = f"{spread}\n⬅️ Go back\n🇽 Exit menu\n{delete}\nIf you wish to delete a name, select the name by it's number\nMenu will stay open until timeout or reaction by emoji",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Randomizer_View", icon_url=ctx.author.avatar_url)

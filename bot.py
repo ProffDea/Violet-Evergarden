@@ -76,9 +76,6 @@ async def on_ready():
             print(f'\n{bot.user.name} is online in {len(bot.guilds)} {sver}.\n\nStatus:\n{statusmsg}\n')
             for inguild in bot.guilds:
                 cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{inguild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
-                #for member in inguild.members:
-                #    if member.bot == False:
-                #        cur.execute(f"INSERT INTO members (user_id) VALUES ('{member.id}') ON CONFLICT (user_id) DO NOTHING;")
             cur.execute("SELECT guild, autovc FROM servers;")
             allguilds = cur.fetchall()
             for g in allguilds:
