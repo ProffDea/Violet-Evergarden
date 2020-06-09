@@ -54,7 +54,7 @@ async def on_ready():
             cur.execute("""CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT);
                             INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING;
                             CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT);
-                            CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL);
+                            CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL, text BIGINT UNIQUE);
                             CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, name_generator TEXT [], status_bl BOOLEAN);
                             SELECT * FROM bot WHERE name = 'Status';""")
             rows = cur.fetchall()

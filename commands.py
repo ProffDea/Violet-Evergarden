@@ -168,6 +168,10 @@ class Commands(commands.Cog):
             await ctx.send(embed=e)
         except:
             return
+    @avatar.error
+    async def avatar_error(self, ctx, error):
+        if isinstance(error, commands.BadArgument):
+            await ctx.send("Invalid argument!")
 
     @commands.command(name='BL', aliases=['Blacklist'], help="Prevents specific user by ID from using a specific command.")
     @commands.is_owner()
