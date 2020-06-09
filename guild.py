@@ -58,7 +58,7 @@ class Settings(commands.Cog):
             cur = conn.cursor()
             try:
                 menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view']
-                alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrite', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
+                alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
                 if Menu != None:
                     vc = None
                     cur.execute(f"SELECT voicechl, owner FROM vclist WHERE owner = '{ctx.author.id}';")
@@ -397,95 +397,83 @@ class menu(object):
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
 
-    async def properties(self, context, cursor, channel):
+    async def properties(self, ctx, cur, chl):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        vc = self.bot.get_channel(chl)
+        cur.execute(f"SELECT static FROM vclist WHERE voicechl = '{vc.id}';")
+        static = cur.fetchall()
+        for s in static:
+            static = s[0]
+        if ctx.author.id in self.bot.name_cool:
+            sec = int(round(time.time() - self.bot.name_cool[ctx.author.id]['log']))
+        else:
+            sec = 301
+        if sec <= 300:
+            name_cd = f" | {5-(sec//60)%60} minute(s)"
+        else:
+            name_cd = ''
+
+        options, spread = {f"Transfer Owner - '{ctx.author}'" : "transfer",
+                        f"Permanent - {static}" : "permanent",
+                        f"Name - '{vc.name}'{name_cd}" : "name",
+                        f"Bitrate - {vc.bitrate} kbps" : "bitrate",
+                        f"User Limit - {vc.user_limit}" : "user_limit",
+                        f"Position - {vc.position}" : "position",
+                        f"Category - '{vc.category}'" : "category",
+                        f"Overwrites" : "overwrites"}, ''
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        vc = self.bot.get_channel(channel)
-        cursor.execute("SELECT voicechl, owner FROM vclist;")
-        rows = cursor.fetchall()
-        for r in rows:
-            if r[1] == None and r[0] == vc.id:
-                cursor.execute(f"UPDATE vclist SET owner = '{context.author.id}' WHERE voicechl = '{vc.id}';")
-                notif = f"**{vc.name.upper()}** has been claimed by **{context.author.name.upper()}**\n"
-            else:
-                notif = ""
         while True:
             counter = counter + 1
             if counter == 1:
-                cursor.execute(f"SELECT static FROM vclist WHERE voicechl = '{vc.id}';")
-                rows = cursor.fetchall()
-                for r in rows:
-                    static = r[0]
-                if context.author.id in self.bot.name_cool:
-                    sec = int(round(time.time() - self.bot.name_cool[context.author.id]['log']))
-                else:
-                    sec = 301
-                if sec <= 300:
-                    name_cd = f" | On **{5-(sec//60)%60}** minute cooldown"
-                else:
-                    name_cd = ''
-                content = f"{notif}```py\n'Menu for Properties' - {vc.name} | {prefix}vc Properties [CHANNEL ID]\n```\n`1.)` `Owner Transfership` - current owner: **{context.author.name}**\n`2.)` `Add Co-Owner` - **Work in Progress**\n`3.)` `Permanent Channel` - **{static}**\n`4.)` `Channel Name` - **{vc.name}**{name_cd}\n`5.)` `Channel Bitrate` - **{vc.bitrate}kbps**\n`6.)` `User Limit` - **{vc.user_limit}**\n`7.)` `Channel Position` - **{vc.position}**\n`8.)` `Channel Category` - **{vc.category}**\n`9.)` `Overwrite Permissions`\n\n```py\n# Properties of the voice channel that can be changed\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "Properties Menu",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nProperties of the voice channel that can be changed",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Properties [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {vc.name}\nID: {vc.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+                
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.manage(self, context, cursor)
+                    await menu.manage(self, ctx, cur)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
-                    return
-                elif wfc == '1' or 'transfer' in wfc:
-                    await msg.delete()
-                    await menu.transfer(self, context, cursor, channel)
-                    return
-                #elif wfc == '2' or 'add' in wfc:
-                #    await msg.delete()
-                #    await menu.co_owner(self, context, cursor, channel)
-                #    return
-                elif wfc == '3' or 'permanent' in wfc:
-                    await msg.delete()
-                    await menu.permanent(self, context, cursor, channel)
-                    return
-                elif wfc == '4' or 'name' in wfc:
-                    await msg.delete()
-                    await menu.name(self, context, cursor, channel)
-                    return
-                elif wfc == '5' or 'bitrate' in wfc:
-                    await msg.delete()
-                    await menu.bitrate(self, context, cursor, channel)
-                    return
-                elif wfc == '6' or 'user limit' in wfc:
-                    await msg.delete()
-                    await menu.user_limit(self, context, cursor, channel)
-                    return
-                elif wfc == '7' or 'position' in wfc:
-                    await msg.delete()
-                    await menu.position(self, context, cursor, channel)
-                    return
-                elif wfc == '8' or 'category' in wfc:
-                    await msg.delete()
-                    await menu.category(self, context, cursor, channel)
-                    return
-                elif wfc == '9' or 'overwrite' in wfc or 'permission' in wfc:
-                    await msg.delete()
-                    await menu.overwrite(self, context, cursor, channel)
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur, chl)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
     async def transfer(self, context, cursor, channel):
@@ -531,7 +519,7 @@ class menu(object):
                                     wfc = wf.content.lower()
                                     if wfc == 'back':
                                         await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
+                                        await menu.overwrites(self, context, cursor, channel)
                                         return
                                     elif wfc == 'exit':
                                         await msg.delete()
@@ -551,97 +539,6 @@ class menu(object):
                                     elif wfc == 'no':
                                         await wf.delete()
                                         await msg.edit(content=f"```py\n'Menu for Ownership Transfer' - {vc.name} | {prefix}vc Transfer [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n```py\n# Transfering ownership will no longer allow you to edit this voice channel and will remove your permissions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
-                                        break
-                                    else:
-                                        await wf.delete()
-                                        invalid = await context.send(menu.invalid(self))
-                                        await invalid.delete(delay=1)
-                                break
-                        elif m == context.guild.members[-1]:
-                            await wf.delete()
-                            invalid = await context.send(menu.invalid(self))
-                            await invalid.delete(delay=1)
-                            break
-                        else:
-                            pass
-            except asyncio.TimeoutError:
-                await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
-                return
-
-    async def co_owner(self, context, cursor, channel):
-        def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
-        counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        vc = self.bot.get_channel(channel)
-        while True:
-            counter = counter + 1
-            if counter == 1:
-                content = f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owner [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
-            try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
-                    await msg.delete()
-                    await menu.properties(self, context, cursor, channel)
-                    return
-                elif wfc == 'exit':
-                    await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
-                    return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
-                    await msg.delete()
-                    return
-                else:
-                    for m in context.guild.members:
-                        if wfc == m.name.lower() or wf.content == str(m.id) or wfc == m.display_name: # doesn't trigger on mention
-                            cursor.execute(f"SELECT admin FROM vclist WHERE voicechl = '{vc.id}';")
-                            rows = cursor.fetchall()
-                            array = []
-                            for r in rows:
-                                if r[0] != None:
-                                    array += [r[0]]
-                            if m.bot == True:
-                                await wf.delete()
-                                await msg.edit(content=f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owners [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n**Bots can not be Co-Owners of voice channels**\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
-                                break
-                            elif m.id in array:
-                                await wf.delete()
-                                await msg.edit(content=f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owners [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n**Member already a Co-Owner**\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
-                                break
-                            else:
-                                await wf.delete()
-                                await msg.edit(content=f"```py\n'Menu for Adding Co-Owners' - {vc.name} | {prefix}vc Co-Owners [CHANNEL ID]\n```\nAre you sure you wish to add **{m.name}** as a Co-Owner?\n`Yes`/`No`\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
-                                while True:
-                                    wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                                    wfc = wf.content.lower()
-                                    if wfc == 'back':
-                                        await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
-                                        return
-                                    elif wfc == 'exit':
-                                        await msg.delete()
-                                        await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
-                                        return
-                                    elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
-                                        await msg.delete()
-                                        return
-                                    elif wfc == 'yes':
-                                        await msg.delete()
-                                        cursor.execute("""INSERT INTO vclist (admin) VALUES ('{"%s"}');""", (m.id))
-                                        author_perm = vc.overwrites_for(context.author)
-                                        await vc.set_permissions(m, overwrite=author_perm)
-                                        await vc.set_permissions(context.author, overwrite=None)
-                                        await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **{m.name.upper()} ADDED AS CO-OWNER** 💌\n\n```py\n# {m.name} can now edit this voice channel.\n```")
-                                        return
-                                    elif wfc == 'no':
-                                        await wf.delete()
-                                        await msg.edit(content=f"```py\n'Menu for Co-Owner' - {vc.name} | {prefix}vc Co-Owner [CHANNEL ID]\n```\nPlease enter a valid `member`\n\n```py\n# Adding Co-Owners will allow them to edit the voice channel with exceptions.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```")
                                         break
                                     else:
                                         await wf.delete()
@@ -702,7 +599,7 @@ class menu(object):
             if counter == 1:
                 e = discord.Embed(
                     title = "Name Menu",
-                    description = "Enter a name as a `message` to change channel name\n\n⬅️ Go back\n🇽 Exit menu\n\n5 minute cooldown after changing name",
+                    description = "```py\nEnter a name as a 'message' to change channel name\n```\n\n⬅️ Go back\n🇽 Exit menu\n\n5 minute cooldown after changing name",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Name [CHANNEL ID]", icon_url=ctx.author.avatar_url)
@@ -800,84 +697,133 @@ class menu(object):
                 await ctx.send(menu.timeout(self, ctx))
                 return
 
-    async def bitrate(self, context, cursor, channel):
+    async def bitrate(self, ctx, cur, chl):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        vc = self.bot.get_channel(channel)
+        vc = self.bot.get_channel(chl)
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Menu for Bitrate' - {vc.name} | {prefix}vc Bitrate [CHANNEL ID]\n```\nSelect a number between `8000-96000`\n\n```py\n# Default for voice channels is 64000kbps | Higher number is better audio quality yet requires better internet connection vice versa\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "Bitrate Menu",
+                    description = f"```py\nSelect a number between 8000-96000\n```\n⬅️ Go back\n🇽 Exit menu\n\nDefault for voice channels is 64000kbps\nHigher number is better audio quality yet requires better internet connection vice versa",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Bitrate [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {vc.name}\nID: {vc.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.properties(self, context, cursor, channel)
+                    await menu.properties(self, ctx, cur, chl)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) >= 8000 and int(result.content) <= 96000:
                     await msg.delete()
-                    return
-                elif wf.content.isdigit() == True and int(wfc) >= 8000 and int(wfc) <= 96000:
-                    await msg.delete()
-                    await vc.edit(bitrate=int(wfc), reason="Bitrate Changed")
-                    await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **BITRATE CHANGED** 💌\n\n```py\n# new bitrate: {vc.bitrate}\n```")
+                    old = vc.bitrate
+                    await vc.edit(bitrate=int(result.content), reason="Bitrate Changed")
+                    e = discord.Embed(
+                        title = "BITRATE CHANGED",
+                        description = f"Thank you for using automated voice channels",
+                        color = discord.Color.purple()
+                    )
+                    e.set_author(name=f"Vc Bitrate [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                    e.set_footer(text=f"New Bitrate: {vc.bitrate}\nOld Bitrate: {old}\nName: {vc.name}\nID: {vc.id}")
+                    await ctx.send(embed=e)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
-    async def user_limit(self, context, cursor, channel):
+    async def limit(self, ctx, cur, chl):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        vc = self.bot.get_channel(channel)
+        vc = self.bot.get_channel(chl)
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Menu for User Limit' - {vc.name} | {prefix}vc Limit [CHANNEL ID]\n```\nSelect a number between `0-99`\n\n```py\n# 0 is limitless users\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "User Limit Menu",
+                    description = f"```py\nSelect a number between 0-99\n```\n⬅️ Go back\n🇽 Exit menu\n\n0 is limitless users",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Limit [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {vc.name}\nID: {vc.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.properties(self, context, cursor, channel)
+                    await menu.properties(self, ctx, cur, chl)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif  int(result.content) >= 0 and int(result.content) <= 99:
                     await msg.delete()
-                    return
-                elif wf.content.isdigit() == True and int(wfc) >= 0 and int(wfc) <= 99:
-                    await msg.delete()
-                    await vc.edit(user_limit=int(wfc), reason="User Limit Changed")
-                    await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **USER LIMIT CHANGED** 💌\n\n```py\n# new user limit : {vc.user_limit}\n```")
+                    old = vc.user_limit
+                    await vc.edit(user_limit=int(result.content), reason="User Limit Changed")
+                    e = discord.Embed(
+                        title = "USER LIMIT CHANGED",
+                        description = f"Thank you for using automated voice channels",
+                        color = discord.Color.purple()
+                    )
+                    e.set_author(name=f"Vc Limit [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                    e.set_footer(text=f"New Limit: {vc.user_limit}\nOld Limit: {old}\nName: {vc.name}\nID: {vc.id}")
+                    await ctx.send(embed=e)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
         
     async def position(self, context, cursor, channel):
@@ -1018,59 +964,67 @@ class menu(object):
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
 
-    async def overwrite(self, context, cursor, channel):
+    async def overwrites(self, ctx, cur, chl):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        options, spread = {"View Channel" : "view",
+                        "Connect" : "connect",
+                        "Speak" : "speak",
+                        "Stream" : "stream",
+                        "Move Members" : "move"}, ''
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+        
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
-        vc = self.bot.get_channel(channel)
+        vc = self.bot.get_channel(chl)
         while True:
             counter = counter + 1
             if counter == 1:
-                content = f"```py\n'Menu for Overwrite' - {vc.name} | {prefix}vc Overwrite [CHANNEL ID]\n```\n`1.)` `View Channel`\n`2.)` `Connect`\n`3.)` `Speak`\n`4.)` `Stream`\n`5.)` `Move Members`\n\n```py\n# Overwrite permissions are what allows you to join, talk, and even see the voice channel, etc.\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "Overwrites Menu",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nOverwrite permissions are what allows you to join, talk, and even see the voice channel, etc.",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Overwrites [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {vc.name}\nID: {vc.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+                    
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.properties(self, context, cursor, channel)
+                    await menu.properties(self, ctx, cur, chl)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
-                    return
-                elif wfc == '1' or 'view' in wfc:
-                    await msg.delete()
-                    await menu.view(self, context, cursor, channel)
-                    return
-                elif wfc == '2' or 'connect' in wfc:
-                    await msg.delete()
-                    await menu.connect(self, context, cursor, channel)
-                    return
-                elif wfc == '3' or 'speak' in wfc:
-                    await msg.delete()
-                    await menu.speak(self, context, cursor, channel)
-                    return
-                elif wfc == '4' or 'video' in wfc:
-                    await msg.delete()
-                    await menu.stream(self, context, cursor, channel)
-                    return
-                elif wfc == '5' or 'move' in wfc or 'member' in wfc:
-                    await msg.delete()
-                    await menu.move(self, context, cursor, channel)
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur, chl)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
     async def view(self, context, cursor, channel):
@@ -1092,7 +1046,7 @@ class menu(object):
                 wfc = wf.content.lower()
                 if wfc == 'back':
                     await msg.delete()
-                    await menu.overwrite(self, context, cursor, channel)
+                    await menu.overwrites(self, context, cursor, channel)
                     return
                 elif wfc == 'exit':
                     await msg.delete()
@@ -1113,7 +1067,7 @@ class menu(object):
                             break
                         elif wfc == 'back':
                             await msg.delete()
-                            await menu.overwrite(self, context, cursor, channel)
+                            await menu.overwrites(self, context, cursor, channel)
                             return
                         elif wfc == 'exit':
                             await msg.delete()
@@ -1184,7 +1138,7 @@ class menu(object):
                                         break
                                     elif wfc == 'back':
                                         await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
+                                        await menu.overwrites(self, context, cursor, channel)
                                         return
                                     elif wfc == 'exit':
                                         await msg.delete()
@@ -1253,7 +1207,7 @@ class menu(object):
                 wfc = wf.content.lower()
                 if wfc == 'back':
                     await msg.delete()
-                    await menu.overwrite(self, context, cursor, channel)
+                    await menu.overwrites(self, context, cursor, channel)
                     return
                 elif wfc == 'exit':
                     await msg.delete()
@@ -1274,7 +1228,7 @@ class menu(object):
                             break
                         elif wfc == 'back':
                             await msg.delete()
-                            await menu.overwrite(self, context, cursor, channel)
+                            await menu.overwrites(self, context, cursor, channel)
                             return
                         elif wfc == 'exit':
                             await msg.delete()
@@ -1345,7 +1299,7 @@ class menu(object):
                                         break
                                     elif wfc == 'back':
                                         await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
+                                        await menu.overwrites(self, context, cursor, channel)
                                         return
                                     elif wfc == 'exit':
                                         await msg.delete()
@@ -1411,7 +1365,7 @@ class menu(object):
                 wfc = wf.content.lower()
                 if wfc == 'back':
                     await msg.delete()
-                    await menu.overwrite(self, context, cursor, channel)
+                    await menu.overwrites(self, context, cursor, channel)
                     return
                 elif wfc == 'exit':
                     await msg.delete()
@@ -1432,7 +1386,7 @@ class menu(object):
                             break
                         elif wfc == 'back':
                             await msg.delete()
-                            await menu.overwrite(self, context, cursor, channel)
+                            await menu.overwrites(self, context, cursor, channel)
                             return
                         elif wfc == 'exit':
                             await msg.delete()
@@ -1503,7 +1457,7 @@ class menu(object):
                                         break
                                     elif wfc == 'back':
                                         await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
+                                        await menu.overwrites(self, context, cursor, channel)
                                         return
                                     elif wfc == 'exit':
                                         await msg.delete()
@@ -1569,7 +1523,7 @@ class menu(object):
                 wfc = wf.content.lower()
                 if wfc == 'back':
                     await msg.delete()
-                    await menu.overwrite(self, context, cursor, channel)
+                    await menu.overwrites(self, context, cursor, channel)
                     return
                 elif wfc == 'exit':
                     await msg.delete()
@@ -1590,7 +1544,7 @@ class menu(object):
                             break
                         elif wfc == 'back':
                             await msg.delete()
-                            await menu.overwrite(self, context, cursor, channel)
+                            await menu.overwrites(self, context, cursor, channel)
                             return
                         elif wfc == 'exit':
                             await msg.delete()
@@ -1661,7 +1615,7 @@ class menu(object):
                                         break
                                     elif wfc == 'back':
                                         await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
+                                        await menu.overwrites(self, context, cursor, channel)
                                         return
                                     elif wfc == 'exit':
                                         await msg.delete()
@@ -1727,7 +1681,7 @@ class menu(object):
                 wfc = wf.content.lower()
                 if wfc == 'back':
                     await msg.delete()
-                    await menu.overwrite(self, context, cursor, channel)
+                    await menu.overwrites(self, context, cursor, channel)
                     return
                 elif wfc == 'exit':
                     await msg.delete()
@@ -1748,7 +1702,7 @@ class menu(object):
                             break
                         elif wfc == 'back':
                             await msg.delete()
-                            await menu.overwrite(self, context, cursor, channel)
+                            await menu.overwrites(self, context, cursor, channel)
                             return
                         elif wfc == 'exit':
                             await msg.delete()
@@ -1819,7 +1773,7 @@ class menu(object):
                                         break
                                     elif wfc == 'back':
                                         await msg.delete()
-                                        await menu.overwrite(self, context, cursor, channel)
+                                        await menu.overwrites(self, context, cursor, channel)
                                         return
                                     elif wfc == 'exit':
                                         await msg.delete()
@@ -2006,7 +1960,7 @@ class menu(object):
             if counter == 1:
                 e = discord.Embed(
                     title = "Add Names to Randomizer Menu",
-                    description = f"Enter a name as a `message` one by one\n\n⬅️ Go back\n🇽 Exit menu\n\nStore up to a maximum of 30 names\nMenu will stay open until timeout or reaction by emoji",
+                    description = f"```py\nEnter a name as a 'message' one by one\n```\n\n⬅️ Go back\n🇽 Exit menu\n\nStore up to a maximum of 30 names\nMenu will stay open until timeout or reaction by emoji",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc Randomizer_Add", icon_url=ctx.author.avatar_url)
