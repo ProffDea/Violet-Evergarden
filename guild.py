@@ -351,7 +351,7 @@ class menu(object):
         cur.execute("SELECT voicechl, owner FROM vclist;")
         vclist = cur.fetchall()
         options, spread = [], ''
-        for n, v in enumerate(vclist):
+        for v in vclist:
             if v[1] == ctx.author.id or v[1] == None:
                 vc = self.bot.get_channel(v[0])
                 if vc.guild.id == ctx.guild.id:
@@ -360,7 +360,7 @@ class menu(object):
                     else:
                         own = ""
                     options += [vc.id]
-                    spread += f"{n + 1}.) {vc.name} : {vc.id}{own}\n"
+                    spread += f"{options.index(vc.id) + 1}.) {vc.name} : {vc.id}{own}\n"
         if spread == '':
             spread = "No voice channels found.\n"
 
@@ -2034,15 +2034,15 @@ class menu(object):
             empty = True
         else:
             empty = False
-        for num, name in enumerate(name_list):
+        for name in name_list:
             if len(name_list) == 1:
-                spread += f"```py\n{num + 1}.) {name[0]}\n```"
+                spread += f"```py\n{name_list.index(name) + 1}.) {name[0]}\n```"
             elif name == name_list[0]:
-                spread += f"```py\n{num + 1}.) {name[0]}\n"
+                spread += f"```py\n{name_list.index(name) + 1}.) {name[0]}\n"
             elif name == name_list[-1]:
-                spread += f"{num + 1}.) {name[0]}\n```"
+                spread += f"{name_list.index(name) + 1}.) {name[0]}\n```"
             else:
-                spread += f"{num + 1}.) {name[0]}\n"
+                spread += f"{name_list.index(name) + 1}.) {name[0]}\n"
         counter = 0
         while True:
             counter = counter + 1
