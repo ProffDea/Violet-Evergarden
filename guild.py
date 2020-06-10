@@ -57,7 +57,7 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
-                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view']
+                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server']
                 alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
                 if Menu != None:
                     vc = None
@@ -68,7 +68,12 @@ class Settings(commands.Cog):
                         chunk += [r[0]]
                         if self.bot.get_channel(r[0]).guild.id == ctx.guild.id and Channel == str(r[0]):
                             vc = self.bot.get_channel(r[0])
-                    if Menu.lower() in menus:
+                    perms = ctx.channel.permissions_for(ctx.author)
+                    manage = perms.manage_channels
+                    if Menu.lower() in ['auto', 'server'] and manage == False:
+                        await menu.user(self, ctx,  cur)
+                        return
+                    elif Menu.lower() in menus:
                         await getattr(menu, Menu)(self, ctx, cur)
                         return
                     elif Menu.lower() in alter:
@@ -123,23 +128,13 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
-        cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
-        auto = cur.fetchall()
-        for a in auto:
-            if a[0] == None:
-                auto_name = 'None'
-                break
-            else:
-                get_chl = self.bot.get_channel(a[0])
-                auto_name = get_chl.name
-                break
-        options, spread = {f"Auto Voice Channel : {auto_name}" : "auto",
-                        "Personal Voice Channel" : "personal",
-                        "User Settings" : "settings"}, ''
+        options, spread = {"Personal Voice Channel" : "personal",
+                        "User Settings" : "settings",
+                        "Server Settings" : "server"}, ''
         perms = ctx.channel.permissions_for(ctx.author)
         manage = perms.manage_channels
         if manage == False:
-            options.pop(f"Auto Voice Channel : {auto_name}")
+            options.pop("Server Settings")
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
 
@@ -175,9 +170,9 @@ class menu(object):
                 elif 'ℹ️' in str(result) and info == False:
                     info = True
                     await msg.clear_reaction("ℹ️")
-                    await ctx.send(""">>> **Auto Voice Channel**: This option will only be visible to users with manage channel permissions. Select a voice channel to be used as the main channel in the server to create personal voice channels upon joining it.
-**Personal Voice Channel**: Access everything to do with your own personal voice channels through this option
-**User Settings**: Change settings correlating to your account that'll effect your personal voice channels""")
+                    await ctx.send(""">>> **Personal Voice Channel**: Access everything to do with your own personal voice channels through this option
+**User Settings**: Change settings correlating to your account that'll effect your personal voice channels
+**Server Settings**: This option will only be visible to users with manage channel permissions. Change settings that'll help manage this server""")
                 elif str(type(result)) == "<class 'tuple'>":
                     pass
                 elif result.content.isdigit() == False:
@@ -194,71 +189,83 @@ class menu(object):
                 await ctx.send(menu.timeout(self, ctx))
                 return
 
-    async def auto(self, context, cursor):
+    async def auto(self, ctx, cur):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
+        auto = cur.fetchall()
+        if auto[0][0] != None:
+            autovc = self.bot.get_channel(auto[0][0])
+            autoname, autoid, remove = autovc.name, str(autovc.id), "❌ Remove Auto Voice Channel\n"
+        else:
+            autoname, autoid, remove = 'None', 'None', ''
+        cur.execute("SELECT voicechl FROM vclist")
+        vclist = cur.fetchall()
+        
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
         while True:
             counter = counter + 1
             if counter == 1:
-                cursor.execute(f"SELECT autovc FROM servers WHERE guild = '{context.guild.id}';")
-                rows = cursor.fetchall()
-                for r in rows:
-                    if r[0] == None:
-                        auto_name = 'None'
-                        auto_id = " | 'ID' - None"
-                        break
-                    else:
-                        get_chl = self.bot.get_channel(r[0])
-                        auto_name = get_chl.name
-                        auto_id = f" | 'ID' - {get_chl.id}"
-                        break
-                if auto_name == 'None':
-                    option = ''
-                else:
-                    option = f"\n💌 Enter 'none' to remove {auto_name}"
-                content = f"```py\n'Menu for Auto Voice Channel' - {auto_name}{auto_id} | {prefix}vc Auto\n```\nPlease enter a voice channel\n\n```py\n# Auto Voice Channel will be the main voice channel used to create personal voice channels upon joining{option}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "Auto Voice Channel Menu",
+                    description = f"```py\nEnter a voice channel 'name' or 'ID'\n```\n⬅️ Go back\n🇽 Exit menu\n{remove}\nAuto Voice Channel will be the main voice channel used to create personal voice channels upon joining",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Auto", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {autoname}\nID: {autoid}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+                if auto[0][0] != None:
+                    await msg.add_reaction("❌")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                for c in context.guild.channels:
-                    instance = isinstance(c, discord.VoiceChannel)
-                    if wfc == c.name.lower() and instance or wfc == str(c.id) and instance or wfc == c.mention.lower() and instance or wfc == 'none' and auto_name != 'None':
-                        cursor.execute(f"SELECT voicechl FROM vclist;")
-                        vclist = cursor.fetchall()
-                        if [item for item in vclist if c.id in item]:
-                            break
-                        if wfc == 'none':
-                            place = 'None'
-                            clean = 'NULL'
-                        else:
-                            place = c.name
-                            clean = f"'{c.id}'"
-                        await msg.delete()
-                        cursor.execute(f"UPDATE servers SET autovc = {clean} WHERE guild = '{context.guild.id}';")
-                        await context.send(f"```py\n# {context.author.name} | Auto Voice Channel\n```\n💌 **AUTO VOICE CHANNEL SET** 💌\n\n```py\n# from '{auto_name}' to '{place}'\n```")
-                        return
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+                if str(type(result)) != "<class 'tuple'>":
+                    vc = [voice for voice in ctx.guild.voice_channels if result.content.lower() in voice.name.lower() or result.content in str(voice.id)]
+
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.user(self, context, cursor)
+                    await menu.server(self, ctx, cur)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}tvc' or wf.content == f'{prefix}tVC' or wf.content == f'{prefix}tVc' or wf.content == f'{prefix}tvC':
+                elif '❌' in str(result) and auto[0][0] != None:
                     await msg.delete()
+                    cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{ctx.guild.id}';")
+                    await menu.auto(self, ctx, cur)
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif vc and vc[0].id not in [item[0] for item in vclist]:
+                    await msg.delete()
+                    cur.execute(f"UPDATE servers SET autovc = '{vc[0].id}' WHERE guild = '{ctx.guild.id}'")
+                    e = discord.Embed(
+                        title = "AUTO VOICE CHANNEL SET",
+                        description = "Thank you for using automated voice channels",
+                        color = discord.Color.purple()
+                    )
+                    e.set_author(name=f"Vc Auto", icon_url=ctx.author.avatar_url)
+                    e.set_footer(text=f"New AutoVC: {vc[0].name}\nID: {vc[0].id}\nOld AutoVC: {autoname}\nID: {autoid}")
+                    msg = await ctx.send(embed=e)
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
     async def personal(self, ctx, cur):
@@ -335,66 +342,74 @@ class menu(object):
         await context.send(content)
         return
 
-    async def manage(self, context, cursor):
+    async def manage(self, ctx, cur):
         def verify(v):
-            return v.content and v.author == context.author and v.channel == context.channel
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute("SELECT voicechl, owner FROM vclist;")
+        vclist = cur.fetchall()
+        options, spread = [], ''
+        for n, v in enumerate(vclist):
+            if v[1] == ctx.author.id or v[1] == None:
+                vc = self.bot.get_channel(v[0])
+                if vc.guild.id == ctx.guild.id:
+                    if v[1] == None:
+                        own = " - **NO OWNER**"
+                    else:
+                        own = ""
+                    options += [vc.id]
+                    spread += f"{n + 1}.) {vc.name} : {vc.id}{own}\n"
+        if spread == '':
+            spread = "No voice channels found.\n"
+
         counter = 0
-        cursor.execute(f"SELECT prefix FROM servers WHERE guild = '{context.guild.id}'")
-        rows = cursor.fetchall()
-        for r in rows:
-            prefix = r[0]
         while True:
             counter = counter + 1
-            cursor.execute("SELECT * FROM vclist;")
-            rows = cursor.fetchall()
-            mlist = ""
-            num, vname, vid = [], [], []
-            for n, r in enumerate(rows):
-                if r[1] == context.author.id or r[1] == None:
-                    vc = self.bot.get_channel(r[0])
-                    if vc.guild.id == context.guild.id:
-                        if r[1] == None:
-                            own = " - **NO OWNER**"
-                        else:
-                            own = ""
-                        mlist += f"`{n + 1}.)` **`{vc.name}`** `:` `{vc.id}`{own}\n"
-                        num += [str(n+1)]
-                        vname += [vc.name]
-                        vid += [str(vc.id)]
-            if mlist == "":
-                mlist = "No voice channels found.\n"
             if counter == 1:
-                content = f"```py\n'Menu for Manage Voice Channels' - {context.author.name} | {prefix}vc Manage\n```\n{mlist}\n```py\n# Change properties of voice channels that are owned by {context.author.name}\n💌 Enter 'back' to go back a menu\n💌 Enter 'exit' to leave menu\n```"
-                msg = await context.send(content)
+                e = discord.Embed(
+                    title = "Manage Voice Channel Menu",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nChange properties of voice channels that are owned by {ctx.author.name}",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Manage", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
             try:
-                wf = await self.bot.wait_for('message', timeout=60, check=verify)
-                wfc = wf.content.lower()
-                if wfc == 'back':
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
                     await msg.delete()
-                    await menu.personal(self, context, cursor)
+                    await menu.personal(self, ctx, cur)
                     return
-                elif wfc == 'exit':
+                elif '🇽' in str(result):
                     await msg.delete()
-                    await context.send(f"💌 | {context.author.mention}'s menu has been exited.")
+                    await ctx.send(menu.exit(self, ctx))
                     return
-                elif wf.content == f'{prefix}vc' or wf.content == f'{prefix}VC' or wf.content == f'{prefix}Vc' or wf.content == f'{prefix}vC':
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
-                    return
-                elif wfc in num or wfc in vname or wfc in vid:
-                    if wfc in num:
-                        pos = num.index(wfc)
-                    elif wfc in vname:
-                        pos = vname.index(wfc)
-                    elif wfc in vid:
-                        pos = vid.index(wfc)
-                    await msg.delete()
-                    await menu.properties(self, context, cursor, int(vid[pos]))
+                    await menu.properties(self, ctx, cur, options[int(result.content) - 1])
                     return
                 else:
-                    await context.send(menu.invalid(self))
+                    await result.add_reaction("❌")
+
             except asyncio.TimeoutError:
                 await msg.delete()
-                await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
+                await ctx.send(menu.timeout(self, ctx))
                 return
 
     async def properties(self, ctx, cur, chl):
@@ -557,21 +572,28 @@ class menu(object):
                 await context.send(f"💌 | {context.author.mention} menu has been exited due to timeout.")
                 return
 
-    async def permanent(self, context, cursor, channel):
-        vc = self.bot.get_channel(channel)
-        cursor.execute(f"SELECT static FROM vclist WHERE voicechl = '{vc.id}';")
-        rows = cursor.fetchall()
+    async def permanent(self, ctx, cur, chl):
+        vc = self.bot.get_channel(chl)
+        cur.execute(f"SELECT static FROM vclist WHERE voicechl = '{vc.id}';")
+        rows = cur.fetchall()
         for r in rows:
             static = r[0]
         if static == True:
             change = "CHANNEL NO LONGER PERMANENT"
             tip = "Channel will be deleted when no members are present"
-            cursor.execute(f"UPDATE vclist SET static = 'FALSE' WHERE voicechl = '{vc.id}';")
+            cur.execute(f"UPDATE vclist SET static = 'FALSE' WHERE voicechl = '{vc.id}';")
         elif static == False:
             change = "CHANNEL NOW PERMANENT"
             tip = "Channel will NOT be deleted when no members are present"
-            cursor.execute(f"UPDATE vclist SET static = 'TRUE' WHERE voicechl = '{vc.id}';")
-        await context.send(f"```py\n# {context.author.name} | Properties - {vc.name} | {vc.id}\n```\n💌 **{change}** 💌\n\n```py\n# {tip}\n```")
+            cur.execute(f"UPDATE vclist SET static = 'TRUE' WHERE voicechl = '{vc.id}';")
+        e = discord.Embed(
+            title = f"{change}",
+            description = f"Thank you for using automated voice channels",
+            color = discord.Color.purple()
+        )
+        e.set_author(name=f"Vc Permanent [CHANNEL ID]", icon_url=ctx.author.avatar_url)
+        e.set_footer(text=f"{tip}\nName: {vc.name}\nID: {vc.id}")
+        await ctx.send(embed=e)
         return
 
     async def name(self, ctx, cur, chl):
@@ -682,7 +704,7 @@ class menu(object):
                     self.bot.name_cool.update({ctx.author.id : {'log' : time.time()}})
                     e = discord.Embed(
                         title = "NAME CHANGED",
-                        description = f"Thank you for using automated voice channels",
+                        description = "Thank you for using automated voice channels",
                         color = discord.Color.purple()
                     )
                     e.set_author(name=f"Vc Name [CHANNEL ID]", icon_url=ctx.author.avatar_url)
@@ -2094,6 +2116,81 @@ class menu(object):
                     cur.execute(f"UPDATE members SET name_generator = array_remove(name_generator, '{name_list[int(result.content) - 1][0]}') WHERE user_id = '{ctx.author.id}';")
                     await result.add_reaction("✅")
                     await menu.randomizer_view(self, ctx, cur)
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def server(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
+        auto = cur.fetchall()
+        for a in auto:
+            if a[0] == None:
+                auto_name = 'None'
+                break
+            else:
+                get_chl = self.bot.get_channel(a[0])
+                auto_name = get_chl.name
+                break
+        options, spread = {f"Auto Voice Channel : '{auto_name}'" : "auto"}, ''
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+
+        counter = 0
+        info = False
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "Server Settings Menu",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\nℹ️ More information (Menu will stay intact)\n\nThis is where all settings for this server is located at",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Server", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.guild.name}\nID: {ctx.guild.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+                await msg.add_reaction("ℹ️")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.user(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif 'ℹ️' in str(result) and info == False:
+                    info = True
+                    await msg.clear_reaction("ℹ️")
+                    await ctx.send(f""">>> **Auto Voice Channel**: Select a voice channel to be used as the main channel in the server to create personal voice channels upon joining it
+""")
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
+                    await msg.delete()
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
                     return
                 else:
                     await result.add_reaction("❌")
