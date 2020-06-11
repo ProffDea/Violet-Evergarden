@@ -57,7 +57,7 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
-                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all']
+                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all', 'server_randomizer', 'server_randomizer_add', 'server_randomizer_view', 'restrict_randomizer']
                 alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
                 if Menu != None:
                     vc = None
@@ -70,7 +70,7 @@ class Settings(commands.Cog):
                             vc = self.bot.get_channel(r[0])
                     perms = ctx.channel.permissions_for(ctx.author)
                     manage = perms.manage_channels
-                    if Menu.lower() in ['auto', 'server'] and manage == False:
+                    if Menu.lower() in ['auto', 'server', 'server_randomizer', 'server_randomizer_add', 'server_randomizer_view', 'restrict_randomizer'] and manage == False:
                         await menu.user(self, ctx,  cur)
                         return
                     elif Menu.lower() in menus:
@@ -128,9 +128,8 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
-        options, spread = {"Personal Voice Channel" : "personal",
-                        "User Settings" : "settings",
-                        "Server Settings" : "server"}, ''
+        options, spread = {"Personal Voice Channel" : "personal", "User Settings" : "settings",
+                        "Server Settings" : "server", "List All Menus" : "all"}, ''
         perms = ctx.channel.permissions_for(ctx.author)
         manage = perms.manage_channels
         if manage == False:
@@ -2138,7 +2137,7 @@ class menu(object):
                 get_chl = self.bot.get_channel(a[0])
                 auto_name = get_chl.name
                 break
-        options, spread = {f"Auto Voice Channel : '{auto_name}'" : "auto"}, ''
+        options, spread = {f"Auto Voice Channel : '{auto_name}'" : "auto", "Server Channel Name Randomizer" : "server_randomizer"}, ''
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
 
@@ -2203,12 +2202,16 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
+        cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{ctx.guild.id}';")
+        restrictions = cur.fetchall()
         cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
         auto = cur.fetchall()
         autoname = self.bot.get_channel(auto[0][0]).name if auto[0][0] != None else 'None'
         options, spread = {"User" : "user", "Personal Voice Channel" : "personal", "User Settings" : "settings",
         "Server Settings" : "server", "Create Voice Channel" : "create", "Manage Voice Channels" : "manage", "Channel Name Randomizer" : "randomizer",
-        "Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view", f"Auto Voice Channel : '{autoname}'" : "auto"}, ''
+        "Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view", f"Auto Voice Channel : '{autoname}'" : "auto",
+        "Server Channel Name Randomizer" : "server_randomizer", "Add Server Names" : "server_randomizer_add", "View/Edit Server Name List" : "server_randomizer_view",
+        f"Restrict Randomizer - {restrictions[0][0]}" : "restrict_randomizer"}, ''
         alters = {"Properties" : "properties", "Transfer Owner" : "transfer", "Permanent" : "permanent", "Name" : "name", "Bitrate" : "bitrate",
         "User Limit" : "limit", "Position" : "position", "Category" : "category", "Overwrites" : "overwrites", "View Channel" : "view", "Connect" : "connect",
         "Speak" : "speak", "Stream" : "stream", "Move Members" : "move"}
@@ -2217,6 +2220,10 @@ class menu(object):
         if manage == False:
             options.pop("Server Settings")
             options.pop(f"Auto Voice Channel : '{autoname}'")
+            options.pop("Server Channel Name Randomizer")
+            options.pop("Add Server Names")
+            options.pop("View/Edit Server Name List")
+            options.pop(f"Restrict Randomizer - {restrictions[0][0]}")
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
         for num, alter in enumerate(alters.keys()):
@@ -2228,12 +2235,13 @@ class menu(object):
             if counter == 1:
                 e = discord.Embed(
                     title = "All Menus",
-                    description = f"```py\n{spread}\n```\n🇽 Exit menu\n\nJump to a specific menu from here if needed",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\nJump to a specific menu from here if needed",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"Vc All", icon_url=ctx.author.avatar_url)
                 e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
                 msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
                 await msg.add_reaction("🇽")
 
             try:
@@ -2245,7 +2253,11 @@ class menu(object):
                 for future in pending:
                     future.cancel()
                 
-                if '🇽' in str(result):
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.user(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
                     await msg.delete()
                     await ctx.send(menu.exit(self, ctx))
                     return
@@ -2330,6 +2342,270 @@ class menu(object):
                     return
                 else:
                     await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def server_randomizer(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{ctx.guild.id}';")
+        restrictions = cur.fetchall()
+        options, spread = {"Add Server Names" : "server_randomizer_add", "View/Edit Server Name List" : "server_randomizer_view",
+                            f"Restrict Randomizer Names - {restrictions[0][0]}" : "restrict_randomizer"}, ''
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+
+        counter = 0
+        info = False
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "Server Channel Name Randomizer Menu",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\nℹ️ More information (Menu will stay intact)\n\nNames for personal voice channels will be picked at random",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Server_Randomizer", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.guild.name}\nID: {ctx.guild.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+                await msg.add_reaction("ℹ️")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.server(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif 'ℹ️' in str(result) and info == False:
+                    info = True
+                    await msg.clear_reaction("ℹ️")
+                    await ctx.send(f""">>> THIS IS NOT TO BE CONFUSED WITH THE USER'S RANDOMIZER NAMES.\nThe server (**{ctx.guild.name}**) will be able to make and store a maximum of 30 custom made names.
+Upon the creation of a user's personal voice channel, 1 of these 30 names (or less) will be picked at random to represent the personal voice channel's name.\n
+Note: These names will be overwritten if the user has their own randomizer names set up. You can restrict to using only server names for all users through the restriction option in the randomizer menu.""")
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
+                    await msg.delete()
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def server_randomizer_add(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT unnest(name_randomizer) FROM servers WHERE guild = '{ctx.guild.id}';")
+        name_list = cur.fetchall()
+
+        counter = 0
+        left = 30 - len(name_list)
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "Add Names to Server Randomizer Menu",
+                    description = f"```py\nEnter a name as a 'message' one by one\n```\n\n⬅️ Go back\n🇽 Exit menu\n\nStore up to a maximum of 30 names for this server\nMenu will stay open until timeout or reaction by emoji",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Server_Randomizer_Add", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Total Names: {len(name_list)}\nName: {ctx.guild.name}\nID: {ctx.guild.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.server_randomizer(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                else:
+                    if left > 0:
+                        left = left - 1
+                        cur.execute("""UPDATE servers SET name_randomizer = name_randomizer || '{%s}' WHERE guild = '%s';""" % (result.content, ctx.guild.id))
+                        await result.add_reaction("✅")
+                    else:
+                        await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def server_randomizer_view(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT unnest(name_randomizer) FROM servers WHERE guild = '{ctx.guild.id}';")
+        name_list, spread = cur.fetchall(), ''
+        if name_list == []:
+            spread += "```py\nNo names found\n```"
+            empty = True
+        else:
+            empty = False
+        for name in name_list:
+            if len(name_list) == 1:
+                spread += f"```py\n{name_list.index(name) + 1}.) {name[0]}\n```"
+            elif name == name_list[0]:
+                spread += f"```py\n{name_list.index(name) + 1}.) {name[0]}\n"
+            elif name == name_list[-1]:
+                spread += f"{name_list.index(name) + 1}.) {name[0]}\n```"
+            else:
+                spread += f"{name_list.index(name) + 1}.) {name[0]}\n"
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                delete = '⚠️ Delete all names\n' if empty == False else ''
+                e = discord.Embed(
+                    title = "List of Server Randomizer Names Menu",
+                    description = f"{spread}\n⬅️ Go back\n🇽 Exit menu\n{delete}\nIf you wish to delete a name, select the name by it's number\nMenu will stay open until timeout or reaction by emoji",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Server_Randomizer_View", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.guild.name}\nID: {ctx.guild.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+                if empty == False:
+                    await msg.add_reaction("⚠️")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.server_randomizer(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif '⚠️' in str(result) and empty == False:
+                    def verify_c(reaction, user):
+                        return user == ctx.author and reaction.message.id == confirm.id
+
+                    confirm_count = 0
+                    while True:
+                        confirm_count = confirm_count + 1
+                        if confirm_count == 1:
+                            confirm = await ctx.send(f"{ctx.author.mention} Are you sure you want to delete all names?")
+                            await confirm.add_reaction("✅")
+                            await confirm.add_reaction("❌")
+                        reaction, user = await self.bot.wait_for('reaction_add', timeout=5, check=verify_c)
+
+                        if '✅' == str(reaction):
+                            await msg.delete()
+                            await confirm.delete()
+                            cur.execute(f"UPDATE servers SET name_randomizer = NULL WHERE guild = '{ctx.guild.id}';")
+                            await menu.server_randomizer_view(self, ctx, cur)
+                            return
+                        elif '❌' == str(reaction):
+                            await confirm.delete()
+                            try:
+                                await msg.remove_reaction("⚠️", user)
+                                break
+                            except discord.NotFound:
+                                break
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(name_list) and int(result.content) != 0:
+                    await msg.delete()
+                    cur.execute(f"UPDATE servers SET name_randomizer = array_remove(name_randomizer, '{name_list[int(result.content) - 1][0]}') WHERE guild = '{ctx.guild.id}';")
+                    await result.add_reaction("✅")
+                    await menu.server_randomizer_view(self, ctx, cur)
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def restrict_randomizer(self, ctx, cur):
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{ctx.guild.id}'")
+        restrictions = cur.fetchall()
+        
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                if restrictions[0][0] == False:
+                    msg = await ctx.send("Are you sure you wish to **restrict** all users to the server's randomzier names?\nIf there are none, it'll restrict to the bot's default names until names are added.")
+                elif restrictions[0][0] == True:
+                    msg = await ctx.send("Are you sure you wish to **allow** all users to use their custom randomizer names?\nIf the name is blacklisted, it will not be displayed.")
+                await msg.add_reaction("✅")
+                await msg.add_reaction("❌")
+            
+            try:
+                result = await self.bot.wait_for('reaction_add', timeout=60, check=verify_r)
+
+                if '✅' in str(result):
+                    await msg.delete()
+                    if restrictions[0][0] == False:
+                        cur.execute(f"UPDATE servers SET restrict_randomizer = true WHERE guild = '{ctx.guild.id}';")
+                    elif restrictions[0][0] == True:
+                        cur.execute(f"UPDATE servers SET restrict_randomizer = false WHERE guild = '{ctx.guild.id}';")
+                    await menu.server_randomizer(self, ctx, cur)
+                    return
+                elif '❌' in str(result):
+                    await msg.delete()
+                    await menu.server_randomizer(self, ctx, cur)
+                    return
 
             except asyncio.TimeoutError:
                 await msg.delete()

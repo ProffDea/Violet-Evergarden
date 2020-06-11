@@ -53,7 +53,7 @@ async def on_ready():
             cur = conn.cursor()
             cur.execute("""CREATE TABLE IF NOT EXISTS bot (name TEXT UNIQUE, message TEXT);
                             INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING;
-                            CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT);
+                            CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT, name_randomizer TEXT [], restrict_randomizer BOOLEAN NOT NULL);
                             CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL, text BIGINT UNIQUE);
                             CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, name_generator TEXT [], status_bl BOOLEAN);
                             SELECT * FROM bot WHERE name = 'Status';""")
@@ -65,35 +65,25 @@ async def on_ready():
             if cstmstatus == None:
                 cstmstatus = ''
             await bot.change_presence(activity=discord.Game(cstmstatus))
-            if len(bot.guilds) == 1:
-                sver = 'server'
-            else:
-                sver = 'servers'
-            if cstmstatus == '':
-                statusmsg = 'No status'
-            else:
-                statusmsg = cstmstatus
+            sver = 'server' if len(bot.guilds) == 1 else 'servers'
+            statusmsg = 'No Status' if cstmstatus == '' else cstmstatus
             print(f'\n{bot.user.name} is online in {len(bot.guilds)} {sver}.\n\nStatus:\n{statusmsg}\n')
             for inguild in bot.guilds:
-                cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{inguild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
+                cur.execute(f"INSERT INTO servers (guild, prefix, restrict_randomizer) VALUES ('{inguild.id}', 'v.', false) ON CONFLICT (guild) DO NOTHING;")
             cur.execute("SELECT guild, autovc FROM servers;")
             allguilds = cur.fetchall()
             for g in allguilds:
                 if bot.get_guild(g[0]) == None:
                     cur.execute(f"DELETE FROM servers WHERE guild = '{g[0]}';")
-                    continue
                 if g[1] == None:
                     pass
-                else:
-                    if bot.get_channel(g[1]) == None:
-                        cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{g[0]}';")
-                        continue
+                elif bot.get_channel(g[1]) == None:
+                    cur.execute(f"UPDATE servers SET autovc = NULL WHERE guild = '{g[0]}';")
             cur.execute("SELECT voicechl FROM vclist;")
             lists = cur.fetchall()
             for l in lists:
                 if bot.get_channel(l[0]) == None:
                     cur.execute(f"DELETE FROM vclist WHERE voicechl = '{l[0]}';")
-                    continue
         finally:
             conn.commit()
             cur.close()
