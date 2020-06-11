@@ -2007,7 +2007,7 @@ class menu(object):
                 else:
                     if left > 0:
                         left = left - 1
-                        cur.execute("""UPDATE members SET name_generator = name_generator || '{%s}' WHERE user_id = '%s';""" % (result.content, ctx.author.id))
+                        cur.execute("""UPDATE members SET name_generator = name_generator || $apostrophes${%s}$apostrophes$ WHERE user_id = '%s';""" % (result.content, ctx.author.id))
                         await result.add_reaction("✅")
                     else:
                         await result.add_reaction("❌")
@@ -2109,7 +2109,7 @@ class menu(object):
                     await result.add_reaction("❌")
                 elif int(result.content) <= len(name_list) and int(result.content) != 0:
                     await msg.delete()
-                    cur.execute(f"UPDATE members SET name_generator = array_remove(name_generator, '{name_list[int(result.content) - 1][0]}') WHERE user_id = '{ctx.author.id}';")
+                    cur.execute(f"UPDATE members SET name_generator = array_remove(name_generator, $apostrophes${name_list[int(result.content) - 1][0]}$apostrophes$) WHERE user_id = '{ctx.author.id}';")
                     await result.add_reaction("✅")
                     await menu.randomizer_view(self, ctx, cur)
                     return
@@ -2462,7 +2462,7 @@ Note: These names will be overwritten if the user has their own randomizer names
                 else:
                     if left > 0:
                         left = left - 1
-                        cur.execute("""UPDATE servers SET name_randomizer = name_randomizer || '{%s}' WHERE guild = '%s';""" % (result.content, ctx.guild.id))
+                        cur.execute("""UPDATE servers SET name_randomizer = name_randomizer || $apostrophes${%s}$apostrophes$ WHERE guild = '%s';""" % (result.content, ctx.guild.id))
                         await result.add_reaction("✅")
                     else:
                         await result.add_reaction("❌")
@@ -2561,7 +2561,7 @@ Note: These names will be overwritten if the user has their own randomizer names
                     await result.add_reaction("❌")
                 elif int(result.content) <= len(name_list) and int(result.content) != 0:
                     await msg.delete()
-                    cur.execute(f"UPDATE servers SET name_randomizer = array_remove(name_randomizer, '{name_list[int(result.content) - 1][0]}') WHERE guild = '{ctx.guild.id}';")
+                    cur.execute(f"UPDATE servers SET name_randomizer = array_remove(name_randomizer, $apostrophes${name_list[int(result.content) - 1][0]}$apostrophes$) WHERE guild = '{ctx.guild.id}';")
                     await result.add_reaction("✅")
                     await menu.server_randomizer_view(self, ctx, cur)
                     return
