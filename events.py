@@ -122,27 +122,21 @@ class Events(commands.Cog):
                                 self.bot.voice_cool[member.id]['dm'] = True
                             return
                         else:
-                            if member.guild.id == 648977487744991233: # Carter's bullshit, delete if needed
-                                vc_name = random.choice(["Clappin' Salmon", 'Hand-Cranked Pickle', 'Burger Pond', 'Koi_Salad M1911 dusty drab', 'The Onion_Gamer1836',
-                                                'Shaggy Shrimp (Onion layered)', 'Holy Peanut (No Shell)', 'Kinetic Kiwi (A/C Powered)', 'Perplexed Pickle (Jar included)', '5$ Crunch Box (Chalupa Craving)',
-                                                'Cereal Sock', 'Tummy Pillow', 'Deck of Pears', 'Pint of Crows', 'Eel Crumbs ',
-                                                'Purebred Turnip', 'Cooing_Onion1094', 'Tuna Paste', 'Unyielding_Slipper ', 'GOTHIC_ONION'])
-                            else:
-                                cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{member.guild.id}';")
-                                restrictions = cur.fetchall()
-                                cur.execute(f"SELECT unnest(name_randomizer) FROM servers WHERE guild = '{member.guild.id}';")
-                                server_name_list = cur.fetchall()
-                                cur.execute(f"SELECT unnest(name_generator) FROM members WHERE user_id = '{member.id}';")
-                                name_list = cur.fetchall()
-                                default_names = ['💌CH Postal Company', '💌Leidenschaftlich', '💌Kazaly', '💌Intense', '💌Shaher Headquarters'
-                                                '💌Roswell', '💌Machtig', '💌Enchaine' ,'💌Eustitia', '💌Lechernt']
-                                if restrictions[0][0] == False:
-                                    if name_list == []:
-                                        vc_name = random.choice(default_names) if server_name_list == [] else random.choice(server_name_list)[0]
-                                    else:
-                                        vc_name = random.choice(name_list)[0]
-                                elif restrictions[0][0] == True:
+                            cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{member.guild.id}';")
+                            restrictions = cur.fetchall()
+                            cur.execute(f"SELECT unnest(name_randomizer) FROM servers WHERE guild = '{member.guild.id}';")
+                            server_name_list = cur.fetchall()
+                            cur.execute(f"SELECT unnest(name_generator) FROM members WHERE user_id = '{member.id}';")
+                            name_list = cur.fetchall()
+                            default_names = ['💌CH Postal Company', '💌Leidenschaftlich', '💌Kazaly', '💌Intense', '💌Shaher Headquarters'
+                                            '💌Roswell', '💌Machtig', '💌Enchaine' ,'💌Eustitia', '💌Lechernt']
+                            if restrictions[0][0] == False:
+                                if name_list == []:
                                     vc_name = random.choice(default_names) if server_name_list == [] else random.choice(server_name_list)[0]
+                                else:
+                                    vc_name = random.choice(name_list)[0]
+                            elif restrictions[0][0] == True:
+                                vc_name = random.choice(default_names) if server_name_list == [] else random.choice(server_name_list)[0]
                             clone = await after.channel.clone(name=vc_name, reason=f"{member.name} has created this VC.")
                             cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
                             await member.move_to(clone)
