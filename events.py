@@ -23,7 +23,7 @@ class Events(commands.Cog):
         finally:
             try:
                 cur = conn.cursor()
-                cur.execute(f"INSERT INTO servers (guild, prefix) VALUES ('{guild.id}', 'v.') ON CONFLICT (guild) DO NOTHING;")
+                cur.execute(f"INSERT INTO servers (guild, prefix, restrict_randomizer) VALUES ('{guild.id}', 'v.', false) ON CONFLICT (guild) DO NOTHING;")
             finally:
                 conn.commit()
                 cur.close()
@@ -128,11 +128,21 @@ class Events(commands.Cog):
                                                 'Cereal Sock', 'Tummy Pillow', 'Deck of Pears', 'Pint of Crows', 'Eel Crumbs ',
                                                 'Purebred Turnip', 'Cooing_Onion1094', 'Tuna Paste', 'Unyielding_Slipper ', 'GOTHIC_ONION'])
                             else:
+                                cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{member.guild.id}';")
+                                restrictions = cur.fetchall()
+                                cur.execute(f"SELECT unnest(name_randomizer) FROM servers WHERE guild = '{member.guild.id}';")
+                                server_name_list = cur.fetchall()
                                 cur.execute(f"SELECT unnest(name_generator) FROM members WHERE user_id = '{member.id}';")
                                 name_list = cur.fetchall()
                                 default_names = ['💌CH Postal Company', '💌Leidenschaftlich', '💌Kazaly', '💌Intense', '💌Shaher Headquarters'
                                                 '💌Roswell', '💌Machtig', '💌Enchaine' ,'💌Eustitia', '💌Lechernt']
-                                vc_name = random.choice(default_names) if name_list == [] else random.choice(name_list)
+                                if restrictions[0][0] == False:
+                                    if name_list == []:
+                                        vc_name = random.choice(default_names) if server_name_list == [] else random.choice(server_name_list)[0]
+                                    else:
+                                        vc_name = random.choice(name_list)[0]
+                                elif restrictions[0][0] == True:
+                                    vc_name = random.choice(default_names) if server_name_list == [] else random.choice(server_name_list)[0]
                             clone = await after.channel.clone(name=vc_name, reason=f"{member.name} has created this VC.")
                             cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
                             await member.move_to(clone)
