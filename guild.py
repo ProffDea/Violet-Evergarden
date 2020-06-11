@@ -57,7 +57,7 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
-                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server']
+                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all']
                 alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
                 if Menu != None:
                     vc = None
@@ -355,10 +355,7 @@ class menu(object):
             if v[1] == ctx.author.id or v[1] == None:
                 vc = self.bot.get_channel(v[0])
                 if vc.guild.id == ctx.guild.id:
-                    if v[1] == None:
-                        own = " - **NO OWNER**"
-                    else:
-                        own = ""
+                    own = " - **NO OWNER**" if v[1] == None else ''
                     options += [vc.id]
                     spread += f"{options.index(vc.id) + 1}.) {vc.name} : {vc.id}{own}\n"
         if spread == '':
@@ -2191,6 +2188,145 @@ class menu(object):
                 elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
                     await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def all(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
+        auto = cur.fetchall()
+        autoname = self.bot.get_channel(auto[0][0]).name if auto[0][0] != None else 'None'
+        options, spread = {"User" : "user", "Personal Voice Channel" : "personal", "User Settings" : "settings",
+        "Server Settings" : "server", "Create Voice Channel" : "create", "Manage Voice Channels" : "manage", "Channel Name Randomizer" : "randomizer",
+        "Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view", f"Auto Voice Channel : '{autoname}'" : "auto"}, ''
+        alters = {"Properties" : "properties", "Transfer Owner" : "transfer", "Permanent" : "permanent", "Name" : "name", "Bitrate" : "bitrate",
+        "User Limit" : "limit", "Position" : "position", "Category" : "category", "Overwrites" : "overwrites", "View Channel" : "view", "Connect" : "connect",
+        "Speak" : "speak", "Stream" : "stream", "Move Members" : "move"}
+        perms = ctx.channel.permissions_for(ctx.author)
+        manage = perms.manage_channels
+        if manage == False:
+            options.pop("Server Settings")
+            options.pop(f"Auto Voice Channel : '{autoname}'")
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+        for num, alter in enumerate(alters.keys()):
+            spread += f"{num + len(options) + 1}.) {alter}\n"
+
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "All Menus",
+                    description = f"```py\n{spread}\n```\n🇽 Exit menu\n\nJump to a specific menu from here if needed",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc All", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+                
+                if '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
+                    await msg.delete()
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                    return
+                elif int(result.content) > len(options) and int(result.content) <= len(options) + len(alters):
+                    await msg.delete()
+                    await menu.all_properties(self, ctx, cur, list(alters.values())[int(result.content) - len(options) - 1])
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def all_properties(self, ctx, cur, jump):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute("SELECT voicechl, owner FROM vclist;")
+        vclist = cur.fetchall()
+        options, spread = [], ''
+        for v in vclist:
+            if v[1] == ctx.author.id or v[1] == None:
+                vc = self.bot.get_channel(v[0])
+                if vc.guild.id == ctx.guild.id:
+                    own = " - **NO OWNER**" if v[1] == None else ''
+                    options += [vc.id]
+                    spread += f"{options.index(vc.id) + 1}.) {vc.name} : {vc.id}{own}\n"
+        if spread == '':
+            spread = "No voice channels found.\n"
+
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "Select a Voice Channel to Edit",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\n{jump.title()} has been selected",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc All", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.all(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
+                    await msg.delete()
+                    await getattr(menu, jump)(self, ctx, cur, options[int(result.content) - 1])
                     return
                 else:
                     await result.add_reaction("❌")

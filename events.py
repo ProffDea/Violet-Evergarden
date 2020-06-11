@@ -37,11 +37,13 @@ class Events(commands.Cog):
         except KeyError:
             conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
         finally:
-            cur = conn.cursor()
-            cur.execute(f"DELETE FROM servers WHERE guild = '{guild.id}';")
-            conn.commit()
-            cur.close()
-            conn.close()
+            try:
+                cur = conn.cursor()
+                cur.execute(f"DELETE FROM servers WHERE guild = '{guild.id}';")
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -109,15 +111,9 @@ class Events(commands.Cog):
                 elif before.channel == None or [item for item in autovc if after.channel.id in item] and before.channel != None:
                     # Triggers on hard joining autovc or moving to autovc
                     if [item for item in autovc if after.channel.id in item]:
-                        if member.id in self.bot.voice_cool:
-                            sec = int(round(time.time() - self.bot.voice_cool[member.id]['log']))
-                        else:
-                            sec = 11
+                        sec = int(round(time.time() - self.bot.voice_cool[member.id]['log'])) if member.id in self.bot.voice_cool else 11
                         if sec <= 10:
-                            if before.channel != None:
-                                await member.move_to(before.channel)
-                            else:
-                                await member.move_to(None)
+                            await member.move_to(before.channel) if before.channel != None else await member.move_to(None)
                             if self.bot.voice_cool[member.id]['dm'] == False:
                                 try:
                                     await member.send(f"💌 | Please wait **{10 - sec}** seconds for a new channel. Thank you.", delete_after=10)
@@ -127,26 +123,20 @@ class Events(commands.Cog):
                             return
                         else:
                             if member.guild.id == 648977487744991233: # Carter's bullshit, delete if needed
-                                Carter_names = ["Clappin' Salmon", 'Hand-Cranked Pickle', 'Burger Pond', 'Koi_Salad M1911 dusty drab', 'The Onion_Gamer1836',
+                                vc_name = random.choice(["Clappin' Salmon", 'Hand-Cranked Pickle', 'Burger Pond', 'Koi_Salad M1911 dusty drab', 'The Onion_Gamer1836',
                                                 'Shaggy Shrimp (Onion layered)', 'Holy Peanut (No Shell)', 'Kinetic Kiwi (A/C Powered)', 'Perplexed Pickle (Jar included)', '5$ Crunch Box (Chalupa Craving)',
                                                 'Cereal Sock', 'Tummy Pillow', 'Deck of Pears', 'Pint of Crows', 'Eel Crumbs ',
-                                                'Purebred Turnip', 'Cooing_Onion1094', 'Tuna Paste', 'Unyielding_Slipper ', 'GOTHIC_ONION']
-                                clone = await after.channel.clone(name=random.choice(Carter_names), reason=f"{member.name} has created this VC.")
-                                cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
-                                await member.move_to(clone)
-                                self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
+                                                'Purebred Turnip', 'Cooing_Onion1094', 'Tuna Paste', 'Unyielding_Slipper ', 'GOTHIC_ONION'])
                             else:
                                 cur.execute(f"SELECT unnest(name_generator) FROM members WHERE user_id = '{member.id}';")
                                 name_list = cur.fetchall()
-                                if name_list == []:
-                                    vc_name = f'💌{member.name}'
-                                else:
-                                    pick = random.choice(name_list)
-                                    vc_name = pick[0]
-                                clone = await after.channel.clone(name=vc_name, reason=f"{member.name} has created this VC.")
-                                cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
-                                await member.move_to(clone)
-                                self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
+                                default_names = ['💌CH Postal Company', '💌Leidenschaftlich', '💌Kazaly', '💌Intense', '💌Shaher Headquarters'
+                                                '💌Roswell', '💌Machtig', '💌Enchaine' ,'💌Eustitia', '💌Lechernt']
+                                vc_name = random.choice(default_names) if name_list == [] else random.choice(name_list)
+                            clone = await after.channel.clone(name=vc_name, reason=f"{member.name} has created this VC.")
+                            cur.execute(f"INSERT INTO vclist (voicechl, owner, static) VALUES ('{clone.id}', '{member.id}', 'FALSE');")
+                            await member.move_to(clone)
+                            self.bot.voice_cool.update({member.id : {'log' : time.time(), 'dm' : False}})
                 # Checking if hard joining
                 if before.channel == None:
                     pass
