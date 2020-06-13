@@ -252,7 +252,7 @@ class Commands(commands.Cog):
                         elif 'ℹ️' in str(result) and info == False:
                             info = True
                             await msg.clear_reaction("ℹ️")
-                            await ctx.send("More information soon")
+                            await ctx.send("Take turns with another player to guess each other's words and see if you both win or lose and keep track of your stats through each game")
                         elif str(type(result)) == "<class 'tuple'>":
                             pass
                         elif result.content.isdigit() == False:
