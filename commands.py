@@ -608,14 +608,14 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     return
                 elif str(type(result)) == "<class 'tuple'>":
                     pass
-                elif result.content.lower() == player_word.lower() or len(result.content) == 1 and result.content.isalpha() and result.content.lower() in player_word.lower() and result.content.lower() not in host_guess: # end game when all letters guessed
+                elif result.content.lower() == player_word.lower() or len(result.content) == 1 and result.content.isalpha() and result.content.lower() in player_word.lower() and result.content.lower() not in host_guess:
                     await msg.delete()
                     await result.add_reaction("✅")
                     host_guess += [result.content.lower()]
                     correct = 0
-                    for letter in set(player_word):
+                    for letter in set(player_word.replace(' ', '').lower()):
                         correct = correct + 1 if letter in host_guess else correct
-                    if result.content.lower() == player_word.lower() or len(set(player_word.replace(' ', ''))) == correct:
+                    if result.content.lower() == player_word.lower() or len(set(player_word.replace(' ', '').lower())) == correct:
                         host_win = True
                     await asyncio.sleep(1)
                     await hangman.player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
@@ -699,9 +699,9 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     await result.add_reaction("✅")
                     player_guess += [result.content.lower()]
                     correct = 0
-                    for letter in set(host_word):
+                    for letter in set(host_word.replace(' ', '').lower()):
                         correct = correct + 1 if letter in player_guess else correct
-                    if result.content.lower() == host_word.lower() or len(set(host_word.replace(' ', ''))) == correct:
+                    if result.content.lower() == host_word.lower() or len(set(host_word.replace(' ', '').lower())) == correct:
                         player_win = True
                     await asyncio.sleep(1)
                     await hangman.host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
