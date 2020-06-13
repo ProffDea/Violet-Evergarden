@@ -298,7 +298,7 @@ class hangman(object):
 
             try:
                 done, pending = await asyncio.wait([
-                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('message', timeout=300, check=verify),
                                 self.bot.wait_for('reaction_add', check=verify_r)
                                 ], return_when=asyncio.FIRST_COMPLETED)
                 result = done.pop().result()
@@ -325,7 +325,7 @@ class hangman(object):
                             await msg.add_reaction("❌")
 
                         try:
-                            result = await self.bot.wait_for('reaction_add', timeout=180, check=verify_p)
+                            result = await self.bot.wait_for('reaction_add', timeout=300, check=verify_p)
 
                             if '✅' in str(result):
                                 await msg.delete()
