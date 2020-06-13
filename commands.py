@@ -420,7 +420,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     except:
                         pass
                     await result.add_reaction("✅")
-                    await hangman.player_words(self, ctx, cur, player, result.content)
+                    await hangman.player_words(self, ctx, cur, player, ' '.join(result.content.split()))
                     return
                 else:
                     await result.add_reaction("🚫")
@@ -509,7 +509,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     except:
                         pass
                     await result.add_reaction("✅")
-                    await hangman.host_turn(self, ctx, cur, player, host_word, result.content, 0, 0, [], [], None, None)
+                    await hangman.host_turn(self, ctx, cur, player, host_word, ' '.join(result.content.split()), 0, 0, [], [], None, None)
                     return
                 else:
                     await result.add_reaction("🚫")
@@ -563,6 +563,10 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
             return
 
         counter = 0
+        picture = ['https://cdn.discordapp.com/attachments/649823748652007441/721317050747977818/strike0.png', 'https://cdn.discordapp.com/attachments/649823748652007441/721318070223765515/strike1.png',
+                    'https://cdn.discordapp.com/attachments/649823748652007441/721318081510506556/strike2.png', 'https://cdn.discordapp.com/attachments/649823748652007441/721318089852977192/strike3.png',
+                    'https://cdn.discordapp.com/attachments/649823748652007441/721318099395149844/strike4.png', 'https://cdn.discordapp.com/attachments/649823748652007441/721318108895117312/strike5.png',
+                    'https://cdn.discordapp.com/attachments/649823748652007441/721318117795561532/strike6.png']
         while True:
             counter = counter + 1
             if counter == 1:
@@ -585,7 +589,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                 )
                 e.set_author(name=f"{ctx.author.name}'s turn", icon_url=ctx.author.avatar_url)
                 e.set_footer(text=f'Guesses:\n{guesses}')
-                e.set_image(url=ctx.author.avatar_url) # Place image accordingly to strikes
+                e.set_image(url=picture[host_strikes])
                 msg = await ctx.send(embed=e)
                 await msg.add_reaction("🇽")
             
@@ -609,9 +613,9 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     await result.add_reaction("✅")
                     host_guess += [result.content.lower()]
                     correct = 0
-                    for letter in player_word:
+                    for letter in set(player_word):
                         correct = correct + 1 if letter in host_guess else correct
-                    if result.content.lower() == player_word.lower() or len(player_word) == correct:
+                    if result.content.lower() == player_word.lower() or len(set(player_word.replace(' ', ''))) == correct:
                         host_win = True
                     await asyncio.sleep(1)
                     await hangman.player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
@@ -620,7 +624,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     host_strikes = host_strikes + 1
                     await msg.delete()
                     await result.add_reaction("❌")
-                    if host_strikes == 6:
+                    if host_strikes == 7:
                         host_win = False
                     host_guess += [result.content.lower()]
                     await asyncio.sleep(1)
@@ -645,6 +649,10 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
             return
 
         counter = 0
+        picture = ['https://cdn.discordapp.com/attachments/649823748652007441/721317050747977818/strike0.png', 'https://cdn.discordapp.com/attachments/649823748652007441/721318070223765515/strike1.png',
+                    'https://cdn.discordapp.com/attachments/649823748652007441/721318081510506556/strike2.png', 'https://cdn.discordapp.com/attachments/649823748652007441/721318089852977192/strike3.png',
+                    'https://cdn.discordapp.com/attachments/649823748652007441/721318099395149844/strike4.png', 'https://cdn.discordapp.com/attachments/649823748652007441/721318108895117312/strike5.png',
+                    'https://cdn.discordapp.com/attachments/649823748652007441/721318117795561532/strike6.png']
         while True:
             counter = counter + 1
             if counter == 1:
@@ -667,7 +675,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                 )
                 e.set_author(name=f"{player.name}'s turn", icon_url=player.avatar_url)
                 e.set_footer(text=f'Guesses:\n{guesses}')
-                e.set_image(url=player.avatar_url) # Place image accordingly to strikes
+                e.set_image(url=picture[player_strikes])
                 msg = await ctx.send(embed=e)
                 await msg.add_reaction("🇽")
             
@@ -691,9 +699,9 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     await result.add_reaction("✅")
                     player_guess += [result.content.lower()]
                     correct = 0
-                    for letter in host_word:
+                    for letter in set(host_word):
                         correct = correct + 1 if letter in player_guess else correct
-                    if result.content.lower() == host_word.lower() or len(host_word) == correct:
+                    if result.content.lower() == host_word.lower() or len(set(host_word.replace(' ', ''))) == correct:
                         player_win = True
                     await asyncio.sleep(1)
                     await hangman.host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
@@ -702,7 +710,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     player_strikes = player_strikes + 1
                     await msg.delete()
                     await result.add_reaction("❌")
-                    if player_strikes == 6:
+                    if player_strikes == 7:
                         player_win = False
                     player_guess += [result.content.lower()]
                     await asyncio.sleep(1)
