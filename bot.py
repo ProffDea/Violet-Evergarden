@@ -55,7 +55,7 @@ async def on_ready():
                             INSERT INTO bot (name) VALUES ('Status') ON CONFLICT (name) DO NOTHING;
                             CREATE TABLE IF NOT EXISTS servers (id SERIAL PRIMARY KEY NOT NULL, guild BIGINT NOT NULL UNIQUE, prefix TEXT NOT NULL, autovc BIGINT, name_randomizer TEXT [], restrict_randomizer BOOLEAN NOT NULL);
                             CREATE TABLE IF NOT EXISTS vclist (voicechl BIGINT NOT NULL UNIQUE, owner BIGINT, admin BIGINT [], static BOOLEAN NOT NULL, text BIGINT UNIQUE);
-                            CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, name_generator TEXT [], status_bl BOOLEAN);
+                            CREATE TABLE IF NOT EXISTS members (id SERIAL PRIMARY KEY UNIQUE NOT NULL, user_id BIGINT UNIQUE NOT NULL, name_generator TEXT [], status_bl BOOLEAN, hm_wins INT NOT NULL DEFAULT 0, hm_losses INT NOT NULL DEFAULT 0, hm_guesses INT NOT NULL DEFAULT 0, hm_strikes INT NOT NULL DEFAULT 0);
                             SELECT * FROM bot WHERE name = 'Status';""")
             rows = cur.fetchall()
             for r in rows:

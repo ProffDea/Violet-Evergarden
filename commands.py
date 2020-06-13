@@ -200,5 +200,560 @@ class Commands(commands.Cog):
                 cur.close()
                 conn.close()
 
+    @commands.command(name='Hangman', help="Play the game Hangman with another player")
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.guild_only()
+    async def hangman(self, ctx):
+        try:
+            DATABASE_URL = os.environ['DATABASE_URL']
+            conn = psycopg2.connect(DATABASE_URL, sslmode='require')
+        except KeyError:
+            conn = psycopg2.connect(database=os.getenv('database'), user=os.getenv('user'), password=os.getenv('password'))
+        finally:
+            try:
+                cur = conn.cursor()
+                def verify(v):
+                    return v.content and v.author == ctx.author and v.channel == ctx.channel
+                def verify_r(reaction, user):
+                    return user == ctx.author and reaction.message.id == msg.id
+
+                options, spread = {"Play with Another Player" : "select", "View Your Game Stats" : "statistics"}, ''
+                for num, option in enumerate(options.keys()):
+                    spread += f"{num + 1}.) {option}\n"
+
+                counter = 0
+                info = False
+                while True:
+                    counter = counter + 1
+                    if counter == 1:
+                        e = discord.Embed(
+                            title = "Play Hangman",
+                            description = f"```py\n{spread}\n```\n🇽 Exit menu\nℹ️ More Information (Menu will stay intact)\n\nEnter one of the corresponding options",
+                            color = discord.Color.purple()
+                        )
+                        e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}", icon_url=ctx.author.avatar_url)
+                        msg = await ctx.send(embed=e)
+                        await msg.add_reaction("🇽")
+                        await msg.add_reaction("ℹ️")
+
+                    try:
+                        done, pending = await asyncio.wait([
+                                        self.bot.wait_for('message', timeout=60, check=verify),
+                                        self.bot.wait_for('reaction_add', check=verify_r)
+                                        ], return_when=asyncio.FIRST_COMPLETED)
+                        result = done.pop().result()
+                        for future in pending:
+                            future.cancel()
+
+                        if '🇽' in str(result):
+                            await msg.delete()
+                            await ctx.send(menu.exit(self, ctx))
+                            return
+                        elif 'ℹ️' in str(result) and info == False:
+                            info = True
+                            await msg.clear_reaction("ℹ️")
+                            await ctx.send("More information soon")
+                        elif str(type(result)) == "<class 'tuple'>":
+                            pass
+                        elif result.content.isdigit() == False:
+                            await result.add_reaction("❌")
+                        elif int(result.content) <= len(options) and int(result.content) != 0:
+                            await msg.delete()
+                            await getattr(hangman, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                            return
+                        else:
+                            await result.add_reaction("❌")
+
+                    except asyncio.TimeoutError:
+                        await msg.delete()
+                        await ctx.send(menu.timeout(self, ctx))
+                        return
+            finally:
+                conn.commit()
+                cur.close()
+                conn.close()
+
+class hangman(object):
+    def __init_(self, bot):
+        self.bot = bot
+
+    def player_timeout(self, ctx, player):
+        return f"**{player.name}** took too long to respond"
+
+    def host_timeout(self, ctx):
+        return f"**{ctx.author.name}** took too long to respond"
+
+    async def select(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                msg = await ctx.send("Please **mention** a user to invite as a player.\nReact with the emoji to cancel.")
+                await msg.add_reaction("⬅️")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await Commands.hangman(self, ctx)
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif len(result.mentions) == 1 and [user for user in result.mentions if user.bot == False and user != ctx.author] != []:
+                    await msg.delete()
+                    player = result.mentions[0]
+                    def verify_p(reaction, user):
+                        return user == player and reaction.message.id == msg.id
+                    counter = 0
+                    while True:
+                        counter = counter + 1
+                        if counter == 1:
+                            msg = await ctx.send(f"**{ctx.author.name}** would like to player with you, do you accept {player.mention}?")
+                            await msg.add_reaction("✅")
+                            await msg.add_reaction("❌")
+
+                        try:
+                            result = await self.bot.wait_for('reaction_add', timeout=180, check=verify_p)
+
+                            if '✅' in str(result):
+                                await msg.delete()
+                                await hangman.host_words(self, ctx, cur, player)
+                                return
+                            elif '❌' in str(result):
+                                await msg.delete()
+                                await ctx.send(f"**{player.name}** declined your request to play, {ctx.author.mention}")
+                                return
+
+                        except asyncio.TimeoutError:
+                            await msg.delete()
+                            await ctx.send(hangman.player_timeout(self, ctx, player))
+                            return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def host_words(self, ctx, cur, player):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.guild == None
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        counter = 0
+        sent = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                try:
+                    dm = await ctx.author.send("💌 | Please enter your word for hangman")
+                    msg = await ctx.send(f"Check your DMs **{ctx.author.name}**!\n\n🇽 to cancel")
+                    handle = False
+                except:
+                    msg = await ctx.send(f"""If you didn't get a DM {ctx.author.mention}, please allow me to DM you
+Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
+                    await msg.add_reaction("🔄")
+                    handle = True
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=300, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '🔄' in str(result) and sent < 2 and handle == True:
+                    sent = sent + 1
+                    await msg.remove_reaction("🔄", ctx.author)
+                    if sent == 2:
+                        await msg.clear_reaction("🔄")
+                    try:
+                        await dm.delete()
+                    except:
+                        pass
+                    try:
+                        dm = await ctx.author.send("💌 | Please enter your word for hangman")
+                        await msg.edit(content=f"Check your DMs **{ctx.author.name}**!\n\n🇽 to cancel")
+                        try:
+                            await msg.clear_reaction("🔄")
+                        except:
+                            pass
+                    except:
+                        pass
+                elif '🇽' in str(result):
+                    try:
+                        await dm.delete()
+                    except:
+                        pass
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.replace(' ', '').isalpha():
+                    try:
+                        await dm.delete()
+                    except:
+                        pass
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    await result.add_reaction("✅")
+                    await hangman.player_words(self, ctx, cur, player, result.content)
+                    return
+                else:
+                    await result.add_reaction("🚫")
+
+            except asyncio.TimeoutError:
+                try:
+                    await msg.delete()
+                except:
+                    pass
+                try:
+                    await dm.delete()
+                except:
+                    pass
+                await ctx.send(hangman.host_timeout(self, ctx))
+                return
+
+    async def player_words(self, ctx, cur, player, host_word):
+        def verify(v):
+            return v.content and v.author == player and v.guild == None
+        def verify_r(reaction, user):
+            return user == player and reaction.message.id == msg.id
+
+        counter = 0
+        sent = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                try:
+                    dm = await player.send("💌 | Please enter your word for hangman")
+                    msg = await ctx.send(f"Check your DMs **{player.name}**!\n\n🇽 to cancel")
+                    handle = False
+                except:
+                    msg = await ctx.send(f"""If you didn't get a DM {player.mention}, please allow me to DM you
+Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
+                    await msg.add_reaction("🔄")
+                    handle = True
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=300, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '🔄' in str(result) and sent < 2 and handle == True:
+                    sent = sent + 1
+                    await msg.remove_reaction("🔄", player)
+                    if sent == 2:
+                        await msg.clear_reaction("🔄")
+                    try:
+                        await dm.delete()
+                    except:
+                        pass
+                    try:
+                        dm = await player.send("💌 | Please enter your word for hangman")
+                        await msg.edit(content=f"Check your DMs **{player.name}**!\n\n🇽 to cancel")
+                        try:
+                            await msg.clear_reaction("🔄")
+                        except:
+                            pass
+                    except:
+                        pass
+                elif '🇽' in str(result):
+                    try:
+                        await dm.delete()
+                    except:
+                        pass
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.replace(' ', '').isalpha():
+                    try:
+                        await dm.delete()
+                    except:
+                        pass
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    await result.add_reaction("✅")
+                    await hangman.host_turn(self, ctx, cur, player, host_word, result.content, 0, 0, [], [], None, None)
+                    return
+                else:
+                    await result.add_reaction("🚫")
+
+            except asyncio.TimeoutError:
+                try:
+                    await msg.delete()
+                except:
+                    pass
+                try:
+                    await dm.delete()
+                except:
+                    pass
+                await ctx.send(hangman.player_timeout(self, ctx, player))
+                return
+
+    async def host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id or user == player and reaction.message.id == msg.id
+
+        if host_win != None and player_win == None:
+            await hangman.player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
+            return
+        elif host_win != None and player_win != None:
+            host_game = 'Won' if host_win == True else 'Lost'
+            player_game = 'Won' if player_win == True else 'Lost'
+            e = discord.Embed(
+                title = f"{ctx.author.name} has {host_game}!\n{player.name} has {player_game}!",
+                description = f"Thank you for playing Hangman",
+                color = discord.Color.purple()
+            )
+            e.set_author(name=f"Game Over", icon_url=ctx.author.avatar_url)
+            e.set_footer(text=f'💌', icon_url=player.avatar_url)
+            e.add_field(name=f"{ctx.author.name}'s Session Stats", value=f'```py\nWord: {host_word}\nStrikes: {host_strikes}\nGuesses: {len(host_guess)}\n```', inline=False)
+            e.add_field(name=f"{player.name}'s Session Stats", value=f'```py\nWord: {player_word}\nStrikes: {player_strikes}\nGuesses: {len(player_guess)}\n```', inline=False)
+            await ctx.send(embed=e)
+            cur.execute(f"""INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;
+                        INSERT INTO members (user_id) VALUES ('{player.id}') ON CONFLICT (user_id) DO NOTHING;""")
+            cur.execute(f"SELECT * FROM members WHERE user_id = '{ctx.author.id}';")
+            host_stats = cur.fetchall()
+            host_win_stat = 1 if host_win == True else 0
+            host_lose_stat = 1 if host_win == False else 0
+            cur.execute(f"SELECT * FROM members WHERE user_id = '{player.id}';")
+            player_stats = cur.fetchall()
+            player_win_stat = 1 if player_win == True else 0
+            player_lose_stat = 1 if player_win == False else 0
+            cur.execute(f"UPDATE members SET hm_wins = '{host_stats[0][4] + host_win_stat}', hm_losses = '{host_stats[0][5] + host_lose_stat}', hm_guesses = '{host_stats[0][6] + len(host_guess)}', hm_strikes = '{host_stats[0][7] + host_strikes}' WHERE user_id = '{ctx.author.id}';")
+            cur.execute(f"UPDATE members SET hm_wins = '{player_stats[0][4] + player_win_stat}', hm_losses = '{player_stats[0][5] + player_lose_stat}', hm_guesses = '{player_stats[0][6] + len(player_guess)}', hm_strikes = '{player_stats[0][7] + player_strikes}' WHERE user_id = '{player.id}';")
+            return
+
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                guesses = ''
+                for guess in host_guess:
+                    guesses += guess if host_guess[-1] == guess else f"{guess}, "
+                letters = ''
+                for n, letter in enumerate(player_word):
+                    if letter.lower() in host_guess:
+                        letters += f'{letter} '
+                    else:
+                        if n + 1 == len(player_word):
+                            letters += '_' if letter != ' ' else '  '
+                        else:
+                            letters += '_ ' if letter != ' ' else '  '
+                e = discord.Embed(
+                    title = f"{len(player_word.replace(' ', ''))} Letters\n`{letters}`",
+                    description = f"```py\nEnter a letter as a 'message' to guess\n```\n🇽 Exit menu",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"{ctx.author.name}'s turn", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f'Guesses:\n{guesses}')
+                e.set_image(url=ctx.author.avatar_url) # Place image accordingly to strikes
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("🇽")
+            
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=300, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(f"**{result[1].name}** has left the game")
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.lower() == player_word.lower() or len(result.content) == 1 and result.content.isalpha() and result.content.lower() in player_word.lower() and result.content.lower() not in host_guess: # end game when all letters guessed
+                    await msg.delete()
+                    await result.add_reaction("✅")
+                    host_guess += [result.content.lower()]
+                    correct = 0
+                    for letter in player_word:
+                        correct = correct + 1 if letter in host_guess else correct
+                    if result.content.lower() == player_word.lower() or len(player_word) == correct:
+                        host_win = True
+                    await asyncio.sleep(1)
+                    await hangman.player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
+                    return
+                elif result.content.replace(' ', '').isalpha() and result.content.lower() not in host_guess or len(result.content) == 1 and result.content.isalpha() and result.content.lower() not in host_guess:
+                    host_strikes = host_strikes + 1
+                    await msg.delete()
+                    await result.add_reaction("❌")
+                    if host_strikes == 6:
+                        host_win = False
+                    host_guess += [result.content.lower()]
+                    await asyncio.sleep(1)
+                    await hangman.player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
+                    return
+                else:
+                    await result.add_reaction("🚫")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(hangman.host_timeout(self, ctx))
+                return
+
+    async def player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win):
+        def verify(v):
+            return v.content and v.author == player and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id or user == player and reaction.message.id == msg.id
+
+        if player_win != None and host_win == None or host_win != None and player_win != None:
+            await hangman.host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
+            return
+
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                guesses = ''
+                for guess in player_guess:
+                    guesses += guess if player_guess[-1] == guess else f"{guess}, "
+                letters = ''
+                for n, letter in enumerate(host_word):
+                    if letter.lower() in player_guess:
+                        letters += f'{letter} '
+                    else:
+                        if n + 1 == len(host_word):
+                            letters += '_' if letter != ' ' else '  '
+                        else:
+                            letters += '_ ' if letter != ' ' else '  '
+                e = discord.Embed(
+                    title = f"{len(host_word.replace(' ', ''))} Letters\n`{letters}`",
+                    description = f"```py\nEnter a letter as a 'message' to guess\n```\n🇽 Exit menu",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"{player.name}'s turn", icon_url=player.avatar_url)
+                e.set_footer(text=f'Guesses:\n{guesses}')
+                e.set_image(url=player.avatar_url) # Place image accordingly to strikes
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("🇽")
+            
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=300, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(f"**{result[1].name}** has left the game")
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.lower() == host_word.lower() or len(result.content) == 1 and result.content.isalpha() and result.content.lower() in host_word.lower() and result.content.lower() not in player_guess:
+                    await msg.delete()
+                    await result.add_reaction("✅")
+                    player_guess += [result.content.lower()]
+                    correct = 0
+                    for letter in host_word:
+                        correct = correct + 1 if letter in player_guess else correct
+                    if result.content.lower() == host_word.lower() or len(host_word) == correct:
+                        player_win = True
+                    await asyncio.sleep(1)
+                    await hangman.host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
+                    return
+                elif result.content.replace(' ', '').isalpha() and result.content.lower() not in player_guess or len(result.content) == 1 and result.content.isalpha() and result.content.lower() not in player_guess:
+                    player_strikes = player_strikes + 1
+                    await msg.delete()
+                    await result.add_reaction("❌")
+                    if player_strikes == 6:
+                        player_win = False
+                    player_guess += [result.content.lower()]
+                    await asyncio.sleep(1)
+                    await hangman.host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
+                    return
+                else:
+                    await result.add_reaction("🚫")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(hangman.player_timeout(self, ctx, player))
+                return
+
+    async def statistics(self, ctx, cur):
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;")
+
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                cur.execute(f"SELECT * FROM members WHERE user_id = '{ctx.author.id}';")
+                stats = cur.fetchall()
+                e = discord.Embed(
+                    title = "Hangman Statistics",
+                    description = f"```py\nWins: {stats[0][4]}\nLosses: {stats[0][5]}\nGuesses: {stats[0][6]}\nStrikes: {stats[0][7]}\n```\n⬅️ Go back\n🇽 Exit menu",
+                    color = discord.Color.purple()
+                )
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}", icon_url=ctx.author.avatar_url)
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
+            try:
+                result = await self.bot.wait_for('reaction_add', timeout=60, check=verify_r)
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await Commands.hangman(self, ctx)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
 def setup(bot):
     bot.add_cog(Commands(bot))
