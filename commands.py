@@ -252,7 +252,7 @@ class Commands(commands.Cog):
                         elif 'ℹ️' in str(result) and info == False:
                             info = True
                             await msg.clear_reaction("ℹ️")
-                            await ctx.send("Take turns with another player to guess each other's words and see if you both win or lose and keep track of your stats through each game")
+                            await ctx.send(">>> Take turns with another player to guess each other's words and see if you both win or lose and keep track of your stats through each game")
                         elif str(type(result)) == "<class 'tuple'>":
                             pass
                         elif result.content.isdigit() == False:
@@ -320,7 +320,7 @@ class hangman(object):
                     while True:
                         counter = counter + 1
                         if counter == 1:
-                            msg = await ctx.send(f"**{ctx.author.name}** would like to player with you, do you accept {player.mention}?")
+                            msg = await ctx.send(f"**{ctx.author.name}** would like to play with you, do you accept **{player.name}**?")
                             await msg.add_reaction("✅")
                             await msg.add_reaction("❌")
 
@@ -352,7 +352,7 @@ class hangman(object):
         def verify(v):
             return v.content and v.author == ctx.author and v.guild == None
         def verify_r(reaction, user):
-            return user == ctx.author and reaction.message.id == msg.id
+            return user == ctx.author and reaction.message.id == msg.id or user == player and reaction.message.id == msg.id
 
         counter = 0
         sent = 0
@@ -406,11 +406,11 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                         await msg.delete()
                     except:
                         pass
-                    await ctx.send(menu.exit(self, ctx))
+                    await ctx.send(f"**{result[1].name}** has canceled the game")
                     return
                 elif str(type(result)) == "<class 'tuple'>":
                     pass
-                elif result.content.replace(' ', '').isalpha():
+                elif '_' not in result.content:
                     try:
                         await dm.delete()
                     except:
@@ -441,7 +441,7 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
         def verify(v):
             return v.content and v.author == player and v.guild == None
         def verify_r(reaction, user):
-            return user == player and reaction.message.id == msg.id
+            return user == player and reaction.message.id == msg.id or user == ctx.author and reaction.message.id == msg.id
 
         counter = 0
         sent = 0
@@ -495,11 +495,11 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                         await msg.delete()
                     except:
                         pass
-                    await ctx.send(menu.exit(self, ctx))
+                    await ctx.send(f"**{result[1].name}** has canceled the game")
                     return
                 elif str(type(result)) == "<class 'tuple'>":
                     pass
-                elif result.content.replace(' ', '').isalpha():
+                elif '_' not in result.content:
                     try:
                         await dm.delete()
                     except:
@@ -576,15 +576,20 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                 letters = ''
                 for n, letter in enumerate(player_word):
                     if letter.lower() in host_guess:
-                        letters += f'{letter} '
-                    else:
                         if n + 1 == len(player_word):
-                            letters += '_' if letter != ' ' else '  '
+                            letters += letter
                         else:
-                            letters += '_ ' if letter != ' ' else '  '
+                            letters += f'{letter} ' if player_word[n + 1].isalpha() else letter
+                    else:
+                        if letter.isalpha() and n + 1 != len(player_word):
+                            letters += '_ ' if player_word[n + 1].isalpha() else '_'
+                        elif letter.isalpha() and n + 1 == len(player_word):
+                            letters += '_'
+                        else:
+                            letters += letter if letter != ' ' or  n + 1 == len(player_word) else '  '
                 e = discord.Embed(
-                    title = f"{len(player_word.replace(' ', ''))} Letters\n`{letters}`",
-                    description = f"```py\nEnter a letter as a 'message' to guess\n```\n🇽 Exit menu",
+                    title = f"{len(player_word.replace(' ', ''))} Letters",
+                    description = f"```\n{letters}\n```\n🇽 Exit menu",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"{ctx.author.name}'s turn", icon_url=ctx.author.avatar_url)
@@ -613,14 +618,17 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     await result.add_reaction("✅")
                     host_guess += [result.content.lower()]
                     correct = 0
-                    for letter in set(player_word.replace(' ', '').lower()):
-                        correct = correct + 1 if letter in host_guess else correct
-                    if result.content.lower() == player_word.lower() or len(set(player_word.replace(' ', '').lower())) == correct:
+                    for letter in set(player_word.lower()):
+                        if letter.isalpha():
+                            correct = correct + 1 if letter in host_guess else correct
+                        else:
+                            correct = correct + 1
+                    if result.content.lower() == player_word.lower() or len(set(player_word.lower())) == correct:
                         host_win = True
                     await asyncio.sleep(1)
                     await hangman.player_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
                     return
-                elif result.content.replace(' ', '').isalpha() and result.content.lower() not in host_guess or len(result.content) == 1 and result.content.isalpha() and result.content.lower() not in host_guess:
+                elif result.content and result.content.lower() not in host_guess or len(result.content) == 1 and result.content.isalpha() and result.content.lower() not in host_guess:
                     host_strikes = host_strikes + 1
                     await msg.delete()
                     await result.add_reaction("❌")
@@ -662,15 +670,20 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                 letters = ''
                 for n, letter in enumerate(host_word):
                     if letter.lower() in player_guess:
-                        letters += f'{letter} '
-                    else:
                         if n + 1 == len(host_word):
-                            letters += '_' if letter != ' ' else '  '
+                            letters += letter
                         else:
-                            letters += '_ ' if letter != ' ' else '  '
+                            letters += f'{letter} ' if host_word[n + 1].isalpha() else letter
+                    else:
+                        if letter.isalpha() and n + 1 != len(host_word):
+                            letters += '_ ' if host_word[n + 1].isalpha() else '_'
+                        elif letter.isalpha() and n + 1 == len(host_word):
+                            letters += '_'
+                        else:
+                            letters += letter if letter != ' ' or  n + 1 == len(host_word) else '  '
                 e = discord.Embed(
-                    title = f"{len(host_word.replace(' ', ''))} Letters\n`{letters}`",
-                    description = f"```py\nEnter a letter as a 'message' to guess\n```\n🇽 Exit menu",
+                    title = f"{len(host_word.replace(' ', ''))} Letters",
+                    description = f"```\n{letters}\n```\n🇽 Exit menu",
                     color = discord.Color.purple()
                 )
                 e.set_author(name=f"{player.name}'s turn", icon_url=player.avatar_url)
@@ -700,13 +713,16 @@ Then react with the 🔄 emoji when done setting up\n\n🇽 to cancel""")
                     player_guess += [result.content.lower()]
                     correct = 0
                     for letter in set(host_word.replace(' ', '').lower()):
-                        correct = correct + 1 if letter in player_guess else correct
-                    if result.content.lower() == host_word.lower() or len(set(host_word.replace(' ', '').lower())) == correct:
+                        if letter.isalpha():
+                            correct = correct + 1 if letter in player_guess else correct
+                        else:
+                            correct = correct + 1
+                    if result.content.lower() == host_word.lower() or len(set(host_word.lower())) == correct:
                         player_win = True
                     await asyncio.sleep(1)
                     await hangman.host_turn(self, ctx, cur, player, host_word, player_word, host_strikes, player_strikes, host_guess, player_guess, host_win, player_win)
                     return
-                elif result.content.replace(' ', '').isalpha() and result.content.lower() not in player_guess or len(result.content) == 1 and result.content.isalpha() and result.content.lower() not in player_guess:
+                elif result.content and result.content.lower() not in player_guess or len(result.content) == 1 and result.content.isalpha() and result.content.lower() not in player_guess:
                     player_strikes = player_strikes + 1
                     await msg.delete()
                     await result.add_reaction("❌")
