@@ -60,35 +60,23 @@ class Settings(commands.Cog):
                 menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all', 'server_randomizer', 'server_randomizer_add',
                 'server_randomizer_view', 'restrict_randomizer', 'server_text', 'restrict_text', 'text', 'disable_text', 'delete_text']
                 alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
-                if Menu != None:
-                    vc = None
-                    cur.execute(f"SELECT voicechl, owner FROM vclist WHERE owner = '{ctx.author.id}';")
-                    rows = cur.fetchall()
-                    chunk = []
-                    for r in rows:
-                        chunk += [r[0]]
-                        if self.bot.get_channel(r[0]).guild.id == ctx.guild.id and Channel == str(r[0]):
-                            vc = self.bot.get_channel(r[0])
-                    perms = ctx.channel.permissions_for(ctx.author)
-                    manage = perms.manage_channels
-                    if Menu.lower() in ['auto', 'server', 'server_randomizer', 'server_randomizer_add', 'server_randomizer_view', 'restrict_randomizer', 'server_text', 'restrict_text'] and manage == False:
-                        await menu.user(self, ctx,  cur)
+                if Menu == None:
+                    pass
+                elif Menu.lower() in menus:
+                    await getattr(menu, Menu.lower())(self, ctx, cur)
+                    return
+                elif Menu.lower() in alter:
+                    cur.execute(f"SELECT voicechl FROM vclist WHERE owner = '{ctx.author.id}';")
+                    voicechl = cur.fetchall()
+                    if voicechl == []:
+                        pass
+                    elif ctx.author.voice != None and Channel == None:
+                        await getattr(menu, Menu.lower())(self, ctx, cur, ctx.author.voice.channel.id)
                         return
-                    elif Menu.lower() in menus:
-                        await getattr(menu, Menu)(self, ctx, cur)
-                        return
-                    elif Menu.lower() in alter:
-                        if ctx.author.voice == None:
-                            pass
-                        elif ctx.author.voice.channel.id in chunk and Channel == None:
-                            vc = True
-                            voice = ctx.author.voice.channel.id
-                        if vc != None and Channel != None:
-                            voice = int(Channel)
-                        if vc == None:
-                            await menu.user(self, ctx, cur)
-                            return
-                        await getattr(menu, Menu)(self, ctx, cur, voice)
+                    elif Channel == None:
+                        pass
+                    elif [chl for chl in voicechl if chl[0] == int(Channel)] and Channel != None:
+                        await getattr(menu, Menu.lower())(self, ctx, cur, [chl for chl in voicechl if chl[0] == int(Channel)][0][0])
                         return
                 await menu.user(self, ctx, cur)
                 return
