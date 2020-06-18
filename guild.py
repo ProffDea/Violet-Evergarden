@@ -57,7 +57,8 @@ class Settings(commands.Cog):
         finally:
             cur = conn.cursor()
             try:
-                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all', 'server_randomizer', 'server_randomizer_add', 'server_randomizer_view', 'restrict_randomizer']
+                menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all', 'server_randomizer', 'server_randomizer_add',
+                'server_randomizer_view', 'restrict_randomizer', 'server_text', 'restrict_text', 'text', 'disable_text', 'delete_text']
                 alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
                 if Menu != None:
                     vc = None
@@ -70,7 +71,7 @@ class Settings(commands.Cog):
                             vc = self.bot.get_channel(r[0])
                     perms = ctx.channel.permissions_for(ctx.author)
                     manage = perms.manage_channels
-                    if Menu.lower() in ['auto', 'server', 'server_randomizer', 'server_randomizer_add', 'server_randomizer_view', 'restrict_randomizer'] and manage == False:
+                    if Menu.lower() in ['auto', 'server', 'server_randomizer', 'server_randomizer_add', 'server_randomizer_view', 'restrict_randomizer', 'server_text', 'restrict_text'] and manage == False:
                         await menu.user(self, ctx,  cur)
                         return
                     elif Menu.lower() in menus:
@@ -117,7 +118,8 @@ class menu(object):
         return f"💌 | **{ctx.author.name}**'s menu has been exited due to timeout."
 
     def miss_permission(self):
-        return "💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!\nPermissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Add Reactions`, `Connect`, `Move Members`"
+        return """💌 | Missing permissions. Please make sure I have all the necessary permissions to properly work!
+Permissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels`, `Send Messages`, `Manage Messages`, `Use External Emojis`, `Add Reactions`, `Connect`, `Move Members`"""
 
     def invalid(self):
         return 'Please choose a valid option.'
@@ -1844,7 +1846,7 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
-        options, spread = {"Channel Name Randomizer" : "randomizer"}, ''
+        options, spread = {"Channel Name Randomizer" : "randomizer", "Text Channels" : "text"}, ''
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
 
@@ -2023,6 +2025,7 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
+        cur.execute(f"INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;")
         cur.execute(f"SELECT unnest(name_generator) FROM members WHERE user_id = '{ctx.author.id}';")
         name_list, spread = cur.fetchall(), ''
         if name_list == []:
@@ -2137,7 +2140,7 @@ class menu(object):
                 get_chl = self.bot.get_channel(a[0])
                 auto_name = get_chl.name
                 break
-        options, spread = {f"Auto Voice Channel : '{auto_name}'" : "auto", "Server Channel Name Randomizer" : "server_randomizer"}, ''
+        options, spread = {f"Auto Voice Channel : '{auto_name}'" : "auto", "Server Channel Name Randomizer" : "server_randomizer", "Server Settings for Text Channels" : "server_text"}, ''
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
 
@@ -2202,16 +2205,21 @@ class menu(object):
         def verify_r(reaction, user):
             return user == ctx.author and reaction.message.id == msg.id
 
+        cur.execute(f"INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;")
         cur.execute(f"SELECT restrict_randomizer FROM servers WHERE guild = '{ctx.guild.id}';")
         restrictions = cur.fetchall()
         cur.execute(f"SELECT autovc FROM servers WHERE guild = '{ctx.guild.id}';")
         auto = cur.fetchall()
         autoname = self.bot.get_channel(auto[0][0]).name if auto[0][0] != None else 'None'
+        cur.execute(f"SELECT restrict_text FROM servers WHERE guild = '{ctx.guild.id}';")
+        restrict_text = cur.fetchall()
+        cur.execute(f"SELECT auto_text FROM members WHERE user_id = '{ctx.author.id}';")
+        auto_text = cur.fetchall()
         options, spread = {"User" : "user", "Personal Voice Channel" : "personal", "User Settings" : "settings",
         "Server Settings" : "server", "Create Voice Channel" : "create", "Manage Voice Channels" : "manage", "Channel Name Randomizer" : "randomizer",
-        "Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view", f"Auto Voice Channel : '{autoname}'" : "auto",
+        "Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view", "Text Channels for Personal VCs" : "text", f"Auto Create Text Channels - {auto_text[0][0]}" : "disable_text", "Delete Text Channel" : "delete_text", f"Auto Voice Channel : '{autoname}'" : "auto",
         "Server Channel Name Randomizer" : "server_randomizer", "Add Server Names" : "server_randomizer_add", "View/Edit Server Name List" : "server_randomizer_view",
-        f"Restrict Randomizer - {restrictions[0][0]}" : "restrict_randomizer"}, ''
+        f"Restrict Randomizer - {restrictions[0][0]}" : "restrict_randomizer", "Server Settings for Text Channels" : "server_text", f"Restrict Text Channels - {restrict_text[0][0]}" : "restrict_text",}, ''
         alters = {"Properties" : "properties", "Transfer Owner" : "transfer", "Permanent" : "permanent", "Name" : "name", "Bitrate" : "bitrate",
         "User Limit" : "limit", "Position" : "position", "Category" : "category", "Overwrites" : "overwrites", "View Channel" : "view", "Connect" : "connect",
         "Speak" : "speak", "Stream" : "stream", "Move Members" : "move"}
@@ -2224,6 +2232,8 @@ class menu(object):
             options.pop("Add Server Names")
             options.pop("View/Edit Server Name List")
             options.pop(f"Restrict Randomizer - {restrictions[0][0]}")
+            options.pop(f"Restrict Text Channels - {restrict_text[0][0]}")
+            options.pop("Server Settings for Text Channels")
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
         for num, alter in enumerate(alters.keys()):
@@ -2611,6 +2621,166 @@ Note: These names will be overwritten if the user has their own randomizer names
                 await msg.delete()
                 await ctx.send(menu.timeout(self, ctx))
                 return
+
+    async def server_text(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"SELECT restrict_text FROM servers WHERE guild = '{ctx.guild.id}';")
+        restrictions = cur.fetchall()
+        options, spread = {f"Restrict Text Channels - {restrictions[0][0]}" : "restrict_text"}, ''
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+        
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "Server Settings for Text Channels",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\nSet what kind of powers server members have for text channels",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Server_Text", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.guild.name}\nID: {ctx.guild.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.server(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
+                    await msg.delete()
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def restrict_text(self, ctx, cur):
+        cur.execute(f"SELECT restrict_text FROM servers WHERE guild = '{ctx.guild.id}';")
+        restrictions = cur.fetchall()
+        if restrictions[0][0] == False:
+            cur.execute(f"UPDATE servers SET restrict_text = 'true' WHERE guild = '{ctx.guild.id}';")
+        elif restrictions[0][0] == True:
+            cur.execute(f"UPDATE servers SET restrict_text = 'false' WHERE guild = '{ctx.guild.id}';")
+        await menu.server_text(self, ctx, cur)
+        return
+
+    async def text(self, ctx, cur):
+        def verify(v):
+            return v.content and v.author == ctx.author and v.channel == ctx.channel
+        def verify_r(reaction, user):
+            return user == ctx.author and reaction.message.id == msg.id
+
+        cur.execute(f"INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;")
+        cur.execute(f"SELECT auto_text FROM members WHERE user_id = '{ctx.author.id}';")
+        auto_text = cur.fetchall()
+        options, spread = {f"Auto Create Text Channels - {auto_text[0][0]}" : "disable_text", "Delete Text Channel" : "delete_text"}, ''
+        cur.execute(f"SELECT text FROM vclist WHERE text = '{ctx.channel.id}';")
+        text = cur.fetchall()
+        if text == []:
+            options.pop("Delete Text Channel")
+        for num, option in enumerate(options.keys()):
+            spread += f"{num + 1}.) {option}\n"
+        
+        counter = 0
+        while True:
+            counter = counter + 1
+            if counter == 1:
+                e = discord.Embed(
+                    title = "Text Channels for Personal VCs",
+                    description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\nSend messages only to users that are in the voice channel using these text channels",
+                    color = discord.Color.purple()
+                )
+                e.set_author(name=f"Vc Text", icon_url=ctx.author.avatar_url)
+                e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
+                msg = await ctx.send(embed=e)
+                await msg.add_reaction("⬅️")
+                await msg.add_reaction("🇽")
+
+            try:
+                done, pending = await asyncio.wait([
+                                self.bot.wait_for('message', timeout=60, check=verify),
+                                self.bot.wait_for('reaction_add', check=verify_r)
+                                ], return_when=asyncio.FIRST_COMPLETED)
+                result = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if '⬅️' in str(result):
+                    await msg.delete()
+                    await menu.settings(self, ctx, cur)
+                    return
+                elif '🇽' in str(result):
+                    await msg.delete()
+                    await ctx.send(menu.exit(self, ctx))
+                    return
+                elif str(type(result)) == "<class 'tuple'>":
+                    pass
+                elif result.content.isdigit() == False:
+                    await result.add_reaction("❌")
+                elif int(result.content) <= len(options) and int(result.content) != 0:
+                    await msg.delete()
+                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                    return
+                else:
+                    await result.add_reaction("❌")
+
+            except asyncio.TimeoutError:
+                await msg.delete()
+                await ctx.send(menu.timeout(self, ctx))
+                return
+
+    async def disable_text(self, ctx, cur):
+        cur.execute(f"INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;")
+        cur.execute(f"SELECT auto_text FROM members WHERE user_id = '{ctx.author.id}';")
+        auto_text = cur.fetchall()
+        if auto_text[0][0] == True:
+            cur.execute(f"UPDATE members SET auto_text = 'false' WHERE user_id = '{ctx.author.id}';")
+        elif auto_text[0][0] == False:
+            cur.execute(f"UPDATE members SET auto_text = 'true' WHERE user_id = '{ctx.author.id}';")
+        await menu.text(self, ctx, cur)
+        return
+
+    async def delete_text(self, ctx, cur):
+        cur.execute(f"SELECT owner, text FROM vclist WHERE text = '{ctx.channel.id}';")
+        management = cur.fetchall()
+        if management == []:
+            await ctx.send("Invalid channel, make sure you're running the command in a channel you own.", delete_after=10)
+        elif management[0][1] == None or management[0][0] != ctx.author.id:
+            await ctx.send("Invalid channel, make sure you're running the command in a channel you own.", delete_after=10)
+        elif management[0][1] == ctx.channel.id and management[0][0] == ctx.author.id:
+            text_channel = self.bot.get_channel(management[0][1])
+            await text_channel.delete(reason="Requested deletion")
+            cur.execute(f"UPDATE vclist SET text = null WHERE text = '{management[0][1]}';")
+        return
+        
 
 def setup(bot):
     bot.add_cog(Settings(bot))
