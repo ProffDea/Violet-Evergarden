@@ -59,7 +59,7 @@ class Settings(commands.Cog):
             try:
                 menus = ['auto', 'personal', 'create', 'manage', 'settings', 'randomizer', 'randomizer_add', 'randomizer_view', 'server', 'all', 'server_randomizer', 'server_randomizer_add',
                 'server_randomizer_view', 'restrict_randomizer', 'server_text', 'restrict_text', 'text', 'disable_text', 'delete_text']
-                alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset']
+                alter = ['properties', 'transfer', 'permanent', 'name', 'bitrate', 'limit', 'position', 'category', 'overwrites', 'view', 'connect', 'speak', 'stream', 'move', 'reset', 'add_text']
                 if Menu == None:
                     pass
                 elif Menu.lower() in menus:
@@ -343,7 +343,7 @@ Permissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels
         for v in vclist:
             if v[1] == ctx.author.id or v[1] == None:
                 vc = self.bot.get_channel(v[0])
-                if vc.guild.id == ctx.guild.id:
+                if vc != None and vc.guild.id == ctx.guild.id:
                     own = " - **NO OWNER**" if v[1] == None else ''
                     options += [vc.id]
                     spread += f"{options.index(vc.id) + 1}.) {vc.name} : {vc.id}{own}\n"
@@ -2208,7 +2208,7 @@ Permissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels
         "Add Names" : "randomizer_add", "View/Edit Name List" : "randomizer_view", "Text Channels for Personal VCs" : "text", f"Auto Create Text Channels - {auto_text[0][0]}" : "disable_text", "Delete Text Channel" : "delete_text", f"Auto Voice Channel : '{autoname}'" : "auto",
         "Server Channel Name Randomizer" : "server_randomizer", "Add Server Names" : "server_randomizer_add", "View/Edit Server Name List" : "server_randomizer_view",
         f"Restrict Randomizer - {restrictions[0][0]}" : "restrict_randomizer", "Server Settings for Text Channels" : "server_text", f"Restrict Text Channels - {restrict_text[0][0]}" : "restrict_text",}, ''
-        alters = {"Properties" : "properties", "Transfer Owner" : "transfer", "Permanent" : "permanent", "Name" : "name", "Bitrate" : "bitrate",
+        alters = {"Add Text Channel" : "add_text", "Properties" : "properties", "Transfer Owner" : "transfer", "Permanent" : "permanent", "Name" : "name", "Bitrate" : "bitrate",
         "User Limit" : "limit", "Position" : "position", "Category" : "category", "Overwrites" : "overwrites", "View Channel" : "view", "Connect" : "connect",
         "Speak" : "speak", "Stream" : "stream", "Move Members" : "move"}
         perms = ctx.channel.permissions_for(ctx.author)
@@ -2222,6 +2222,10 @@ Permissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels
             options.pop(f"Restrict Randomizer - {restrictions[0][0]}")
             options.pop(f"Restrict Text Channels - {restrict_text[0][0]}")
             options.pop("Server Settings for Text Channels")
+        cur.execute(f"SELECT text FROM vclist WHERE text = '{ctx.channel.id}';")
+        text = cur.fetchall()
+        if text != []:
+            options.pop("Add Text Channel")
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
         for num, alter in enumerate(alters.keys()):
@@ -2291,7 +2295,7 @@ Permissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels
         for v in vclist:
             if v[1] == ctx.author.id or v[1] == None:
                 vc = self.bot.get_channel(v[0])
-                if vc.guild.id == ctx.guild.id:
+                if vc != None and vc.guild.id == ctx.guild.id:
                     own = " - **NO OWNER**" if v[1] == None else ''
                     options += [vc.id]
                     spread += f"{options.index(vc.id) + 1}.) {vc.name} : {vc.id}{own}\n"
@@ -2307,7 +2311,7 @@ Permissions such as: `Manage Channels`, `Read Text Channels & See Voice Channels
                     description = f"```py\n{spread}\n```\n⬅️ Go back\n🇽 Exit menu\n\n{jump.title()} has been selected",
                     color = discord.Color.purple()
                 )
-                e.set_author(name=f"Vc All", icon_url=ctx.author.avatar_url)
+                e.set_author(name=f"", icon_url=ctx.author.avatar_url)
                 e.set_footer(text=f"Name: {ctx.author.name}\nID: {ctx.author.id}")
                 msg = await ctx.send(embed=e)
                 await msg.add_reaction("⬅️")
@@ -2689,11 +2693,13 @@ Note: These names will be overwritten if the user has their own randomizer names
         cur.execute(f"INSERT INTO members (user_id) VALUES ('{ctx.author.id}') ON CONFLICT (user_id) DO NOTHING;")
         cur.execute(f"SELECT auto_text FROM members WHERE user_id = '{ctx.author.id}';")
         auto_text = cur.fetchall()
-        options, spread = {f"Auto Create Text Channels - {auto_text[0][0]}" : "disable_text", "Delete Text Channel" : "delete_text"}, ''
+        options, spread = {f"Auto Create Text Channels - {auto_text[0][0]}" : "disable_text", "Delete Text Channel" : "delete_text", "Add Text Channel" : "add_text"}, ''
         cur.execute(f"SELECT text FROM vclist WHERE text = '{ctx.channel.id}';")
         text = cur.fetchall()
         if text == []:
             options.pop("Delete Text Channel")
+        if text != []:
+            options.pop("Add Text Channel")
         for num, option in enumerate(options.keys()):
             spread += f"{num + 1}.) {option}\n"
         
@@ -2735,7 +2741,10 @@ Note: These names will be overwritten if the user has their own randomizer names
                     await result.add_reaction("❌")
                 elif int(result.content) <= len(options) and int(result.content) != 0:
                     await msg.delete()
-                    await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
+                    if list(options.keys())[int(result.content) - 1] == "Add Text Channel":
+                        await menu.all_properties(self, ctx, cur, list(options.values())[int(result.content) - 1])
+                    else:
+                        await getattr(menu, list(options.values())[int(result.content) - 1])(self, ctx, cur)
                     return
                 else:
                     await result.add_reaction("❌")
@@ -2767,8 +2776,30 @@ Note: These names will be overwritten if the user has their own randomizer names
             text_channel = self.bot.get_channel(management[0][1])
             await text_channel.delete(reason="Requested deletion")
             cur.execute(f"UPDATE vclist SET text = null WHERE text = '{management[0][1]}';")
+        else:
+            await menu.user(self, ctx, cur)
         return
-        
+
+    async def add_text(self, ctx, cur, channel):
+        cur.execute(f"SELECT voicechl, text FROM vclist WHERE voicechl = '{channel}';")
+        text = cur.fetchall()
+        cur.execute(f"SELECT restrict_text FROM servers WHERE guild = '{ctx.guild.id}';")
+        restrictions = cur.fetchall()
+        if text != [] and text[0][1] == None and restrictions[0][0] == False:
+            permissions = {ctx.guild.default_role : discord.PermissionOverwrite(view_channel=False),
+                        ctx.author : discord.PermissionOverwrite(view_channel=True),
+                        ctx.guild.me : discord.PermissionOverwrite(view_channel=True)}
+            if ctx.author.voice == None or ctx.author.voice != None and ctx.author.voice.channel.id == text[0][0]:
+                permissions.pop(ctx.author)
+            text_channel = await ctx.guild.create_text_channel(name=self.bot.get_channel(channel).name, overwrites=permissions, category=self.bot.get_channel(channel).category, topic=f"{ctx.author.name}'s Personal Voice Chanenl's Text Channel", reason=f"{ctx.author.name} created a text channel")
+            cur.execute(f"UPDATE vclist SET text = '{text_channel.id}' WHERE voicechl = '{channel}';")
+            await text_channel.send(f"Your personal text channel is here, {ctx.author.mention}", delete_after=20)
+            cur.execute(f"SELECT prefix FROM servers WHERE guild = '{ctx.guild.id}';")
+            prefix = cur.fetchall()
+            await text_channel.send(f"If you do not want automatic text channels, type `{prefix[0][0]}Vc Disable_Text`\nIf you want to delete this text channel, type `{prefix[0][0]}Vc Delete_Text`")
+            await ctx.send("Channel Made")
+        else:
+            await menu.user(self, ctx, cur)
 
 def setup(bot):
     bot.add_cog(Settings(bot))

@@ -111,23 +111,29 @@ class Events(commands.Cog):
         finally:
             try:
                 cur = conn.cursor()
-                cur.execute(f"INSERT INTO members (user_id) VALUES ('{member.id}') ON CONFLICT (user_id) DO NOTHING;")
-                cur.execute("SELECT voicechl FROM vclist;")
+                cur.execute(f"""INSERT INTO members (user_id) VALUES ('{member.id}') ON CONFLICT (user_id) DO NOTHING;
+                            SELECT voicechl FROM vclist;""")
                 vclist = cur.fetchall()
                 cur.execute(f"SELECT autovc, restrict_text, restrict_randomizer FROM servers WHERE guild = '{member.guild.id}';")
                 autovc = cur.fetchall()
+
                 # Checking if hard disconnecting
                 if len(member.guild.channels) == 499 and autovc[0][1] == False or len(member.guild.channels) == 500 and autovc[0][1] == True:
                     pass
                 elif after.channel == None:
                     pass
+
                 # Triggers on joining a channel or an autovc except for hard disconnects
                 elif before.channel == None or [item for item in autovc if after.channel.id in item] and before.channel != None:
+                    
                     # Triggers on hard joining autovc or moving to autovc
-                    if len(self.bot.get_channel(autovc[0][0]).category.channels) == 49 and autovc[0][1] == False or len(self.bot.get_channel(autovc[0][0]).category.channels) == 50 and autovc[0][1] == True:
+                    if autovc[0][0] == None:
+                        pass
+                    elif len(self.bot.get_channel(autovc[0][0]).category.channels) == 49 and autovc[0][1] == False or len(self.bot.get_channel(autovc[0][0]).category.channels) == 50 and autovc[0][1] == True:
                         pass
                     elif autovc[0][0] == after.channel.id:
                         sec = int(round(time.time() - self.bot.voice_cool[member.id]['log'])) if member.id in self.bot.voice_cool else 21
+
                         if sec <= 20:
                             try:
                                 await member.move_to(before.channel) if before.channel != None else await member.move_to(None)
@@ -178,6 +184,7 @@ class Events(commands.Cog):
                                 cur.execute(f"SELECT prefix FROM servers WHERE guild = '{member.guild.id}';")
                                 prefix = cur.fetchall()
                                 await text.send(f"If you do not want automatic text channels, type `{prefix[0][0]}Vc Disable_Text`\nIf you want to delete this text channel, type `{prefix[0][0]}Vc Delete_Text`")
+
                 # Checking if hard disconnecting
                 if after.channel == None:
                     pass
@@ -190,6 +197,7 @@ class Events(commands.Cog):
                         permissions = text_channel.overwrites_for(member)
                         permissions.view_channel = True
                         await text_channel.set_permissions(member, overwrite=permissions)
+
                 # Checking if hard joining
                 if before.channel == None:
                     pass
@@ -197,6 +205,7 @@ class Events(commands.Cog):
                 elif after.channel != None and [vc for vc in vclist if before.channel.id in vc] or after.channel == None and [vc for vc in vclist if before.channel.id in vc]:
                     cur.execute(f"SELECT static, voicechl FROM vclist WHERE voicechl = '{before.channel.id}';")
                     vclist = cur.fetchall()
+                    
                     # Triggers on empty and non-permanent VC
                     if len(before.channel.members) == 0 and vclist[0][0] == False:
                         try:
@@ -212,6 +221,7 @@ class Events(commands.Cog):
                             permissions = text_channel.overwrites_for(member)
                             permissions = None
                             await text_channel.set_permissions(member, overwrite=permissions)
+
             finally:
                 conn.commit()
                 cur.close()
