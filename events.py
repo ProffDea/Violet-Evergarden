@@ -84,16 +84,16 @@ class Events(commands.Cog):
                 vclist = cur.fetchall()
                 for vl in vclist:
                     if self.bot.get_channel(vl[0]) == None:
-                        await asyncio.sleep(1)
                         text_channel = self.bot.get_channel(vl[1])
                         if text_channel != None:
+                            await asyncio.sleep(1)
                             try:
                                 await text_channel.delete(reason="Voice Channel got deleted")
                             except:
                                 pass
                         cur.execute(f"DELETE FROM vclist WHERE voicechl = '{vl[0]}';")
                         break
-                    elif self.bot.get_channel(vl[1]) == None:
+                    if vl[1] != None and self.bot.get_channel(vl[1]) == None:
                         cur.execute(f"UPDATE vclist SET text = null WHERE voicechl = '{vl[0]}';")
                         break
             finally:
