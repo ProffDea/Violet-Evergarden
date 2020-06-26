@@ -1,7 +1,7 @@
 
 .env
 .vscode/settings.json
-VioletVenv/
+violet-venv/
 *.json
 *.pyc
 logs/spring.log
