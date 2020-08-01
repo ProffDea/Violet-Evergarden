@@ -216,7 +216,7 @@ class hangman(object):
                         users
                 INNER JOIN hangman ON users .id = hangman.user_reference
                 WHERE user_id = '{self.ctx.author.id}';
-                ''')
+            ''')
             stats = db.cur.fetchall()
             if stats == []:
                 wins, losses, guesses, strikes = 0, 0, 0, 0
@@ -568,7 +568,7 @@ class hangman_turn(object):
             FROM hangman
             INNER JOIN users ON hangman .user_reference = users.id
             WHERE user_id = '{self.player.id}';
-            ''')
+        ''')
         stats = db.cur.fetchall()
         win = 1 if self.progress == True else 0
         loss = 1 if self.progress == False else 0
@@ -580,7 +580,7 @@ class hangman_turn(object):
                 strikes = '{self.strikes + stats[0][3]}'
             FROM users
             WHERE hangman.user_reference = users.id AND users.user_id = {self.player.id};
-            ''')
+        ''')
 
 def setup(bot):
     bot.add_cog(Games(bot))

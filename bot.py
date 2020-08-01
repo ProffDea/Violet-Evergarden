@@ -21,7 +21,7 @@ def custom_prefix(bot, message):
                     guilds
                 WHERE
                     guild = '{message.guild.id}';
-                ''')
+            ''')
             db_guild = db.cur.fetchall()
             guild_prefix = db_guild[0][1] if message.guild.id == db_guild[0][0] else 'v.'
             return commands.when_mentioned_or(guild_prefix)(bot, message)
@@ -77,13 +77,25 @@ async def on_ready():
                     strikes INT NOT NULL DEFAULT 0
             );
 
+            CREATE TABLE IF NOT EXISTS user_randomizer (
+                id SERIAL PRIMARY KEY UNIQUE NOT NULL,
+                user_reference INT UNIQUE REFERENCES users(id),
+                name_list TEXT []
+            );
+
+            CREATE TABLE IF NOT EXISTS guild_randomizer (
+                id SERIAL PRIMARY KEY UNIQUE NOT NULL,
+                guild_reference INT UNIQUE REFERENCES guilds(id),
+                name_list TEXT []
+            );
+
             SELECT
                 message
             FROM
                 bot
             WHERE
                 name = 'Bot Status Message';
-            ''')
+        ''')
 
         bot_status = db.cur.fetchall()
         if bot_status[0][0] != None:
@@ -94,7 +106,7 @@ async def on_ready():
                 guild
             FROM
                 guilds;
-            ''')
+        ''')
 
         db_guilds = db.cur.fetchall()
         missing_guilds = [bot_guild.id for bot_guild in bot.guilds if bot_guild.id not in [db_guild[0] for db_guild in db_guilds]]
@@ -106,7 +118,7 @@ async def on_ready():
                             ('{missing_guild}')
                     ON CONFLICT (guild)
                     DO NOTHING;
-                    ''')
+                ''')
 
         invalid_guilds = [db_guild[0] for db_guild in db_guilds if bot.get_guild(db_guild[0]) == None]
         if invalid_guilds != []:
@@ -114,7 +126,7 @@ async def on_ready():
                 db.cur.execute(f'''
                     DELETE FROM guilds
                     WHERE guild = '{invalid_guild}';
-                    ''')
+                ''')
     finally:
         db.close()
     Help(bot)

@@ -254,10 +254,206 @@ class personal_voice(object):
                 loop = await self.menus.timeout(self.ctx, msg)
 
     async def user_randomizer_add(self):
-        pass
+        self.db.cur.execute(f'''
+            INSERT INTO users (user_id)
+            VALUES
+                    ('{self.ctx.author.id}')
+            ON CONFLICT (user_id)
+            DO NOTHING;
 
-    async def user_randomzier_view(self):
-        pass
+            INSERT INTO user_randomizer (user_reference)
+            SELECT id
+            FROM users
+            WHERE user_id = '{self.ctx.author.id}'
+            ON CONFLICT (user_reference)
+            DO NOTHING;
+
+            SELECT unnest(name_list)
+            FROM user_randomizer
+            INNER JOIN users ON user_randomizer .user_reference = users.id
+            WHERE user_id = '{self.ctx.author.id}';
+        ''')
+        name_list = self.db.cur.fetchall()
+
+        menus = menu()
+        msg = await menus.interface(
+            self.ctx,
+            'User_Randomizer_Add',
+            'Add Names Menu',
+            "Enter a name as a 'message' one by one",
+            f"\n{menus.back_display}\n{menus.exit_display}",
+            f"Total Names: {len(name_list)}\nName: {self.ctx.author.name}\nID: {self.ctx.author.id}"
+        )
+        await msg.add_reaction(menus.back_emoji)
+        await msg.add_reaction(menus.exit_emoji)
+
+        left = 30 - len(name_list)
+        loop = True
+        while loop:
+            try:
+                
+                done, pending = await asyncio.wait([
+                            self.bot.wait_for('message', timeout=60, check=menus.verify_message(self.ctx)),
+                            self.bot.wait_for('reaction_add', check=menus.verify_reaction(self.ctx, msg))
+                ], return_when=asyncio.FIRST_COMPLETED)
+                response = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if menus.type_reaction(response) and menus.back_emoji == response[0].emoji:
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    await self.user_randomizer()
+                    loop = False
+                elif menus.type_reaction(response) and menus.exit_emoji == response[0].emoji:
+                    loop = await menus.exit(self.ctx, msg)
+                elif menus.type_message(response) and left > 0:
+                    left = left - 1
+                    self.db.cur.execute('''
+                        UPDATE user_randomizer
+                        SET name_list = name_list || $apostrophes${%s}$apostrophes$
+                        FROM users
+                        WHERE user_randomizer.user_reference = users.id AND users.user_id = %s;
+                    ''' % (response.content, self.ctx.author.id))
+                    await response.add_reaction('✅')
+                else:
+                    await menus.invalid(response)
+
+            except asyncio.TimeoutError:
+                loop = await menus.timeout(self.ctx, msg)
+
+    async def user_randomizer_view(self):
+        self.db.cur.execute(f'''
+            INSERT INTO users (user_id)
+            VALUES
+                    ('{self.ctx.author.id}')
+            ON CONFLICT (user_id)
+            DO NOTHING;
+
+            INSERT INTO user_randomizer (user_reference)
+            SELECT id
+            FROM users
+            WHERE user_id = '{self.ctx.author.id}'
+            ON CONFLICT (user_reference)
+            DO NOTHING;
+
+            SELECT unnest(name_list)
+            FROM user_randomizer
+            INNER JOIN users ON user_randomizer .user_reference = users.id
+            WHERE user_id = '{self.ctx.author.id}';
+        ''')
+        name_list, spread = self.db.cur.fetchall(), ''
+        empty = False
+        if name_list == []:
+            spread += 'No names found'
+            empty = True
+        for name in name_list:
+            spread += f"{name_list.index(name) + 1}.) {name[0]}\n" if name_list[-1] != name else f"{name_list.index(name) +1}.) {name[0]}"
+
+        delete = '⚠️ Delete all names' if empty == False else ''
+        menus = menu()
+        msg = await menus.interface(
+            self.ctx,
+            'User_Randomizer_View',
+            'View/Edit Name List Menu',
+            spread,
+            f"\nSelect number to remove name\n{menus.back_display}\n{menus.exit_display}\n{delete}",
+            f"\nName: {self.ctx.author.name}\nID: {self.ctx.author.id}"
+        )
+        await msg.add_reaction(menus.back_emoji)
+        await msg.add_reaction(menus.exit_emoji)
+        if empty == False:
+            await msg.add_reaction('⚠️')
+
+        loop = True
+        while loop:
+            try:
+                
+                done, pending = await asyncio.wait([
+                            self.bot.wait_for('message', timeout=60, check=menus.verify_message(self.ctx)),
+                            self.bot.wait_for('reaction_add', check=menus.verify_reaction(self.ctx, msg))
+                ], return_when=asyncio.FIRST_COMPLETED)
+                response = done.pop().result()
+                for future in pending:
+                    future.cancel()
+
+                if menus.type_reaction(response) and menus.back_emoji == response[0].emoji or menus.type_message(response) and menus.back_response == response.content.lower():
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    await self.user_randomizer()
+                    loop = False
+                elif menus.type_reaction(response) and menus.exit_emoji == response[0].emoji or menus.type_message(response) and menus.exit_response == response.content.lower():
+                    loop = await menus.exit(self.ctx, msg)
+                elif menus.type_reaction(response) and '⚠️' == response[0].emoji:
+                    confirm = True
+                    confirm_msg = await self.ctx.send(f"{self.ctx.author.mention} Are you sure you want to delete all names?")
+                    await confirm_msg.add_reaction('✅')
+                    await confirm_msg.add_reaction('❌')
+
+                    while confirm:
+
+                        done, pending = await asyncio.wait([
+                                    self.bot.wait_for('message', timeout=60, check=menus.verify_message(self.ctx)),
+                                    self.bot.wait_for('reaction_add', check=menus.verify_reaction(self.ctx, confirm_msg))
+                        ], return_when=asyncio.FIRST_COMPLETED)
+                        response = done.pop().result()
+                        for future in pending:
+                            future.cancel()
+
+                        if menus.type_reaction(response) and '✅' == response[0].emoji:
+                            try:
+                                await msg.delete()
+                            except:
+                                pass
+                            try:
+                                await confirm_msg.delete()
+                            except:
+                                pass
+                            self.db.cur.execute(f'''
+                                UPDATE user_randomizer
+                                SET name_list = NULL
+                                FROM users
+                                WHERE user_randomizer.user_reference = users.id AND users.user_id = '{self.ctx.author.id}';
+                            ''')
+                            await self.user_randomizer_view()
+                            confirm = False
+                            loop = False
+                        elif menus.type_reaction(response) and '❌' == response[0].emoji:
+                            try:
+                                await confirm_msg.delete()
+                            except:
+                                pass
+                            try:
+                                await msg.remove_reaction('⚠️', self.ctx.author)
+                            except:
+                                pass
+                            confirm = False
+                        else:
+                            await menus.invalid(response)
+                elif menus.type_message(response) and response.content.isdigit() and int(response.content) <= len(name_list) and int(response.content) > 0:
+                    try:
+                        await msg.delete()
+                    except:
+                        pass
+                    self.db.cur.execute(f'''
+                        UPDATE user_randomizer
+                        SET name_list = array_remove(name_list, $apostrophes${name_list[int(response.content) - 1][0]}$apostrophes$)
+                        FROM users
+                        WHERE user_randomizer.user_reference = users.id AND users.user_id = '{self.ctx.author.id}';
+                    ''')
+                    await response.add_reaction('✅')
+                    await asyncio.sleep(1)
+                    await self.user_randomizer_view()
+                    loop = False
+                else:
+                    await menus.invalid(response)
+
+            except asyncio.TimeoutError:
+                loop = await menus.timeout(self.ctx, msg)
     
     async def user_text(self):
         pass
