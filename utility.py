@@ -68,6 +68,9 @@ class Utility(commands.Cog):
     @commands.command(name='Voice', aliases=['Vc'])
     @commands.cooldown(1, 5, commands.BucketType.member)
     async def vc(self, ctx, Menu=None, Channel=None):
+
+        # Shortcuts are to be added as optional arguments
+
         db = database()
         db.connect()
         try:
@@ -77,6 +80,13 @@ class Utility(commands.Cog):
             db.close()
 
 class personal_voice(object):
+
+    # Status: Work in progress
+
+    # All menus relating to the voice channel feature is loacted here
+    # Menus still need to be transferred over
+    # Edits to the code are needed
+
     def __init__(self, bot, ctx, db, menus):
         self.bot = bot
         self.ctx = ctx

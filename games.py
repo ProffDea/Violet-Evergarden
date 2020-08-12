@@ -5,6 +5,9 @@ from postgresql import database
 from interactions import menu
 
 class Games(commands.Cog):
+
+    # So far Hangman is the only game that will be added any time soon
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -60,6 +63,11 @@ class Games(commands.Cog):
                 loop = await menus.timeout(ctx, msg)
 
 class hangman(object):
+
+    # Status: Finished
+
+    # Handles the session of the hangman game
+
     def __init__(self, bot, ctx):
         self.bot = bot
         self.ctx = ctx
@@ -314,6 +322,11 @@ class hangman(object):
         return
 
 class hangman_turn(object):
+
+    # Status: Finished
+
+    # Handles the players of the hangman session
+
     def __init__(self, bot, ctx, player):
         self.bot = bot
         self.ctx = ctx

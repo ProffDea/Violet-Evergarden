@@ -1,8 +1,15 @@
 import discord
 from discord.ext import commands
 from postgresql import database
+from progression import experience
 
 class events(commands.Cog):
+
+    # Status: Work in progress
+
+    # So far manages server IDs when joining and leaving guilds
+    # More needs to be added in here later
+
     def __init__(self, bot):
         self.bot = bot
 
@@ -30,6 +37,19 @@ class events(commands.Cog):
                 DELETE FROM guilds
                 WHERE guild = '{guild.id}';
                 ''')
+        finally:
+            db.close()
+
+    @commands.Cog.listener()
+    async def on_message(self, message):
+        if message.author.bot:
+            return
+        db = database()
+        db.connect()
+        try:
+            xp = experience(db)
+            xp.initialize(message)
+            xp.message(message)
         finally:
             db.close()
 

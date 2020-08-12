@@ -9,3 +9,4 @@ application.yml
 Lavalink.jar
 logs/spring.log.2020-05-13.0.gz
 *.bat
+discord.log

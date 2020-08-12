@@ -3,6 +3,12 @@ from discord.ext import commands
 from postgresql import database
 
 class menu(object):
+
+    # Status: Finished
+
+    # Foundation of the interractible menus
+    # Edits to improve this code is needed
+
     def __init__(self):
         self.exit_emoji = '🇽'
         self.exit_response = 'exit'

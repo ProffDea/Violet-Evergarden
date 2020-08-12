@@ -2,9 +2,18 @@ import os
 import discord
 import __main__
 import time
+import datetime
+import logging
 from discord.ext import commands
 from dotenv import load_dotenv
 from postgresql import database
+
+print("Creating logs...")
+logger = logging.getLogger('discord')
+logger.setLevel(logging.DEBUG)
+handler = logging.FileHandler(filename='discord.log', encoding='utf=8', mode='w')
+handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s:%(name)s: %(message)s'))
+logger.addHandler(handler)
 
 def custom_prefix(bot, message):
     if not message.guild:
@@ -31,17 +40,21 @@ def custom_prefix(bot, message):
 bot = commands.Bot(command_prefix=custom_prefix, description='Violet Evergarden Overhaul', case_insensitive=True)
 bot.startup_time = time.time()
 
+print("Loading cogs...")
 for cog in ['events', 'utility', 'games']:
     try:
         bot.load_extension(cog)
     except Exception as error:
         print(f'Failed to load {cog}\n{error}')
 
+print("Booting up...")
 @bot.event
 async def on_ready():
+    print("Connecting database...")
     db = database()
     db.connect()
     try:
+        print("Checking database...")
         db.cur.execute('''
             CREATE TABLE IF NOT EXISTS bot (
                     id SERIAL PRIMARY KEY UNIQUE NOT NULL,
@@ -65,12 +78,15 @@ async def on_ready():
 
             CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY UNIQUE NOT NULL,
-                    user_id BIGINT UNIQUE NOT NULL
+                    user_id BIGINT UNIQUE NOT NULL,
+                    experience INT NOT NULL DEFAULT 0,
+                    last_message TIMESTAMP,
+                    last_voice TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS hangman (
                     id SERIAL PRIMARY KEY UNIQUE NOT NULL,
-                    user_reference INT UNIQUE REFERENCES users(id),
+                    user_reference INT UNIQUE NOT NULL REFERENCES users(id),
                     wins INT NOT NULL DEFAULT 0,
                     losses INT NOT NULL DEFAULT 0,
                     guesses INT NOT NULL DEFAULT 0,
@@ -79,14 +95,24 @@ async def on_ready():
 
             CREATE TABLE IF NOT EXISTS user_randomizer (
                 id SERIAL PRIMARY KEY UNIQUE NOT NULL,
-                user_reference INT UNIQUE REFERENCES users(id),
+                user_reference INT UNIQUE NOT NULL REFERENCES users(id),
                 name_list TEXT []
             );
 
             CREATE TABLE IF NOT EXISTS guild_randomizer (
                 id SERIAL PRIMARY KEY UNIQUE NOT NULL,
-                guild_reference INT UNIQUE REFERENCES guilds(id),
+                guild_reference INT UNIQUE NOT NULL REFERENCES guilds(id),
                 name_list TEXT []
+            );
+
+            CREATE TABLE IF NOT EXISTS guild_users (
+                id SERIAL PRIMARY KEY UNIQUE NOT NULL,
+                guild_reference INT NOT NULL REFERENCES guilds(id),
+                user_reference INT NOT NULL REFERENCES users(id),
+                experience INT NOT NULL DEFAULT 0,
+                last_message TIMESTAMP,
+                last_voice TIMESTAMP,
+                UNIQUE (guild_reference, user_reference)
             );
 
             SELECT
@@ -127,10 +153,11 @@ async def on_ready():
                     DELETE FROM guilds
                     WHERE guild = '{invalid_guild}';
                 ''')
+        print("Success")
     finally:
         db.close()
     Help(bot)
-    print(f"{bot.user.name} online in {len(bot.guilds)} guilds")
+    print(f"\n{bot.user.name} online\nTotal guilds: {len(bot.guilds)} guilds\nCurrent ping: {round(bot.latency * 1000)} ms\n")
 
 class Owner(commands.Cog):
     def __init__(self, bot):
@@ -139,6 +166,13 @@ class Owner(commands.Cog):
     @commands.command(name='Logout', aliases=['Lg'])
     @commands.is_owner()
     async def logout(self, ctx):
+        print("Shutting down...")
+        counter = 0 # Increase number to delay shutdown
+        while counter > 0:
+            print(counter)
+            time.sleep(1)
+            counter = counter - 1
+        time.sleep(1)
         await self.bot.close()
         print(f"{self.bot.user.name} went offline")
 
