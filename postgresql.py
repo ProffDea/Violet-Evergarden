@@ -20,7 +20,9 @@ class database(object):
             DATABASE_URL = os.environ['DATABASE_URL']
             self.con = psycopg2.connect(DATABASE_URL, sllmode='require')
         except:
-            self.con = psycopg2.connect(database=os.getenv('DATABASE'), user=os.getenv('DB_USER'), password=os.getenv('DB_PASSWORD'))
+            self.con = psycopg2.connect(database=os.getenv('DATABASE'),
+                                        user=os.getenv('DB_USER'),
+                                        password=os.getenv('DB_PASSWORD'))
         self.cur = self.con.cursor()
         return
 

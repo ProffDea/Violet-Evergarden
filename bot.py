@@ -41,7 +41,7 @@ bot = commands.Bot(command_prefix=custom_prefix, description='Violet Evergarden 
 bot.startup_time = time.time()
 
 print("Loading cogs...")
-for cog in ['events', 'utility', 'games']:
+for cog in ['events', 'utility', 'games', 'music']:
     try:
         bot.load_extension(cog)
     except Exception as error:
@@ -163,11 +163,21 @@ class Owner(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    @commands.command(name='Close', aliases=['C'])
+    @commands.is_owner()
+    async def close(self, ctx, player):
+        await self.bot.wavelink.destroy_node(identifier=player)
+
+    # Event loop errors
     @commands.command(name='Logout', aliases=['Lg'])
     @commands.is_owner()
     async def logout(self, ctx):
         print("Shutting down...")
-        counter = 0 # Increase number to delay shutdown
+        try:
+            await self.bot.wavelink.destroy_node(identifier=os.getenv('WL_ID'))
+        except:
+            pass
+        counter = 3 # Increase number to delay shutdown
         while counter > 0:
             print(counter)
             time.sleep(1)

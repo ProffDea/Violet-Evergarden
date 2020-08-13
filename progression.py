@@ -53,6 +53,7 @@ class experience(object):
                     last_message = NOW()
                 WHERE user_id = '{msg.author.id}';
             ''')
+
         self.db.cur.execute(f'''
             SELECT
                 now() - guild_users.last_message
@@ -76,8 +77,10 @@ class experience(object):
                     guilds
                 INNER JOIN users
                     ON users.user_id = '{msg.author.id}'
-                WHERE guilds.guild = '{msg.guild.id}' AND
-                    users.user_id = '{msg.author.id}';
+                WHERE
+                    guilds.guild = '{msg.guild.id}' AND
+                    guild_users.guild_reference = guilds.id AND
+                    guild_users.user_reference = users.id;
             ''')
 
     def voice(self):
