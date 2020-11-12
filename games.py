@@ -1,8 +1,8 @@
 import discord
 import asyncio
 from discord.ext import commands
-from postgresql import database
 from interactions import menu
+from async_postgresql import async_database
 
 class Games(commands.Cog):
 
@@ -210,11 +210,11 @@ class hangman(object):
 
     async def statistics(self):
         menus = menu()
-        db = database()
-        db.connect()
+        db = async_database()
+        await db.connect()
         try:
 
-            db.cur.execute(f'''
+            stats = await db.con.fetch('''
                 SELECT
                         hangman.wins,
                         hangman.losses,
@@ -223,9 +223,10 @@ class hangman(object):
                 FROM
                         users
                 INNER JOIN hangman ON users .id = hangman.user_reference
-                WHERE user_id = '{self.ctx.author.id}';
-            ''')
-            stats = db.cur.fetchall()
+                WHERE user_id = '%s';
+            ''' %
+            (self.ctx.author.id,)
+            )
             if stats == []:
                 wins, losses, guesses, strikes = 0, 0, 0, 0
             else:
@@ -272,7 +273,7 @@ class hangman(object):
                     loop = await menus.timeout(self.ctx, msg)
         
         finally:
-            db.close()
+            await db.close()
 
     async def game_loop(self):
         host = hangman_turn(self.bot, self.ctx, self.host)
@@ -297,13 +298,13 @@ class hangman(object):
                 self.player = player
                 loop = False
         await self.scoreboard()
-        db = database()
-        db.connect()
+        db = async_database()
+        await db.connect()
         try:
             self.host.update_db(db)
             self.player.update_db(db)
         finally:
-            db.close()
+            await db.close()
         return
 
     async def scoreboard(self):
@@ -562,8 +563,8 @@ class hangman_turn(object):
                     letters += letter if letter != ' ' or num + 1 == len(self.guess_phrase) else '  '
         return letters
 
-    def update_db(self, db):
-        db.cur.execute(f'''
+    async def update_db(self, db):
+        await db.con.execute(f'''
             INSERT INTO users (user_id)
             VALUES
                     ('{self.player.id}')
@@ -571,29 +572,51 @@ class hangman_turn(object):
             DO NOTHING;
 
             INSERT INTO hangman (user_reference)
-            SELECT id
-            FROM users
-            WHERE user_id = '{self.player.id}'
+            SELECT
+                id
+            FROM
+                users
+            WHERE
+                user_id = '{self.player.id}'
             ON CONFLICT (user_reference)
             DO NOTHING;
-
-            SELECT wins, losses, guesses, strikes
-            FROM hangman
-            INNER JOIN users ON hangman .user_reference = users.id
-            WHERE user_id = '{self.player.id}';
         ''')
-        stats = db.cur.fetchall()
+        stats = await db.con.fetch('''
+            SELECT
+                wins,
+                losses,
+                guesses,
+                strikes
+            FROM
+                hangman
+            INNER JOIN users
+                ON hangman.user_reference = users.id
+            WHERE
+                user+id = '%s';
+        ''' %
+        (self.player.id,)
+        )
         win = 1 if self.progress == True else 0
         loss = 1 if self.progress == False else 0
-        db.cur.execute(f'''
-            UPDATE hangman
-            SET wins = '{win + stats[0][0]}',
-                losses = '{loss + stats[0][1]}',
-                guesses = '{len(self.guesses) + stats[0][2]}',
-                strikes = '{self.strikes + stats[0][3]}'
-            FROM users
-            WHERE hangman.user_reference = users.id AND users.user_id = {self.player.id};
-        ''')
+        await db.con.execute('''
+            UPDATE
+                hangman
+            SET
+                wins = '%s',
+                losses = '%s',
+                guesses = '%s',
+                strikes = '%s'
+            FROM
+                users
+            WHERE
+                hangman.user_reference = users.id AND users.user_id = '%s';
+        ''' %
+        (win + stats[0][0],
+        loss + stats[0][1],
+        len(self.guesses) + stats[0][2],
+        self.strikes + stats[0][3],
+        self.player.id)
+        )
 
 def setup(bot):
     bot.add_cog(Games(bot))

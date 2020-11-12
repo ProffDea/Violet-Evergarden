@@ -34,6 +34,7 @@ class Music(commands.Cog):
                                             region=os.getenv('WL_REGION'))
 
     @commands.command(name='Connect', aliases=['Join'])
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def connect(self, ctx, *, channel: discord.VoiceChannel = None):
         if channel == None:
             try:
@@ -45,10 +46,11 @@ class Music(commands.Cog):
         await ctx.message.add_reaction('✅')
         await player.connect(channel.id)
     
-    @commands.command(name='Play')
+    @commands.command(name='Play', aliases=['P'])
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def play(self, ctx, *, query: str):
         # No queue exists | Overwrites any current song playing.
-        tracks = await self.bot.wavelink.get_tracks(f'ytsearch:{query}')
+        tracks = await self.bot.wavelink.get_tracks('ytsearch:%s' % (query,))
         if not tracks:
             return await ctx.send('💌 | Failed to find anything...')
 
@@ -56,10 +58,11 @@ class Music(commands.Cog):
         if not player.is_connected:
             await ctx.invoke(self.connect)
 
-        await ctx.send(f"💌 | ▶️ **`{str(tracks[0])}`**")
+        await ctx.send("💌 | ▶️ **`%s`**" % (str(tracks[0]),))
         await player.play(tracks[0])
     
     @commands.command(name='Leave', aliases=['Disconnect', 'DC'])
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def leave(self, ctx):
         player = self.bot.wavelink.get_player(ctx.guild.id)
         if not player.is_connected:
@@ -69,6 +72,7 @@ class Music(commands.Cog):
         await player.destroy()
 
     @commands.command(name='Skip')
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def skip(self, ctx):
         player = self.bot.wavelink.get_player(ctx.guild.id)
         if not player.is_connected:
@@ -80,6 +84,7 @@ class Music(commands.Cog):
         await player.stop()
 
     @commands.command(name='Pause')
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def pause(self, ctx):
         player = self.bot.wavelink.get_player(ctx.guild.id)
         if not player.is_connected:
@@ -91,6 +96,7 @@ class Music(commands.Cog):
         await player.set_pause(True)
 
     @commands.command(name='Resume')
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def resume(self, ctx):
         player = self.bot.wavelink.get_player(ctx.guild.id)
         if not player.is_connected:
@@ -102,12 +108,13 @@ class Music(commands.Cog):
         await player.set_pause(False)
 
     @commands.command(name='Volume')
+    @commands.cooldown(1, 5, commands.BucketType.member)
     async def volume(self, ctx, volume_int: int = None):
         player = self.bot.wavelink.get_player(ctx.guild.id)
         if not player.is_connected:
             return await ctx.message.add_reaction('❌')
         if volume_int == None:
-            return await ctx.send(f"Current Volume: **`{str(player.volume)}%`**\nDefault Volume: **`100%`**\nTo change the volume, run the same command with a number between `0` to `100` after it")
+            return await ctx.send("Current Volume: **`%s%%`**\nDefault Volume: **`100%%`**\nTo change the volume, run the same command with a number between `0` to `100` after it" % (str(player.volume),))
 
         # Any value higher than 100 distorts audio
         if volume_int >= 0 and volume_int <= 100:
@@ -116,7 +123,7 @@ class Music(commands.Cog):
             elif volume_int > player.volume:
                 await ctx.message.add_reaction('⬆️')
             elif volume_int == player.volume:
-                return await ctx.send(f"💌 | Volume already at **`{volume_int}%`**")
+                return await ctx.send("💌 | Volume already at **`%s%%`**" % (volume_int,))
             await player.set_volume(volume_int)
         else:
             await ctx.send("💌 | Please choose a number between `0` to `100`")

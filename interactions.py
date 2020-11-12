@@ -1,6 +1,5 @@
 import discord
 from discord.ext import commands
-from postgresql import database
 
 class menu(object):
 
