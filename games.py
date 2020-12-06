@@ -301,8 +301,8 @@ class hangman(object):
         db = async_database()
         await db.connect()
         try:
-            self.host.update_db(db)
-            self.player.update_db(db)
+            await self.host.update_db(db)
+            await self.player.update_db(db)
         finally:
             await db.close()
         return

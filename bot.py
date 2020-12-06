@@ -250,6 +250,10 @@ class Owner(commands.Cog):
     @commands.command(name='Logout', aliases=['Lg'])
     @commands.is_owner()
     async def logout(self, ctx):
+        try:
+            await ctx.message.delete()
+        except:
+            pass
         print("Shutting down...")
         try:
             await self.bot.wavelink.destroy_node(identifier=os.getenv('WL_ID'))
@@ -269,18 +273,26 @@ class Owner(commands.Cog):
     @commands.command(name='Load', aliases=['L'])
     @commands.is_owner()
     async def load(self, ctx, cog):
-            if cog == __main__.__file__.replace('.py', ''):
-                print('Impossible to load %s' % (cog,))
-            else:
-                try:
-                    self.bot.load_extension(cog)
-                    print('Done loading %s' % (cog,))
-                except Exception as error:
-                    print('Failed to load %s\n%s' % (cog, error))
+        try:
+            await ctx.message.delete()
+        except:
+            pass
+        if cog == __main__.__file__.replace('.py', ''):
+            print('Impossible to load %s' % (cog,))
+        else:
+            try:
+                self.bot.load_extension(cog)
+                print('Done loading %s' % (cog,))
+            except Exception as error:
+                print('Failed to load %s\n%s' % (cog, error))
 
     @commands.command(name='Unload', aliases=['U'])
     @commands.is_owner()
     async def unload(self, ctx, cog):
+        try:
+            await ctx.message.delete()
+        except:
+            pass
         if cog == __main__.__file__.replace('.py', ''):
             print('Impossible to unload %s' % (cog,))
         else:
@@ -293,6 +305,10 @@ class Owner(commands.Cog):
     @commands.command(name='Reload', aliases=['R'])
     @commands.is_owner()
     async def reload(self, ctx, cog):
+        try:
+            await ctx.message.delete()
+        except:
+            pass
         if cog == __main__.__file__.replace('.py', ''):
             print('Impossible to reload %s' % (cog,))
         else:

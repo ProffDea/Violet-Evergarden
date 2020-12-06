@@ -11,15 +11,18 @@ class Epic7(commands.Cog):
     @commands.cooldown(1, 5, commands.BucketType.member)
     async def info(self, ctx, *, hero = None):
         if hero == None:
-            return await ctx.send("Please name a hero name")
+            return await ctx.send("💌 | Please name a hero name", delete_afer=10)
         
         response = requests.get('https://api.epicsevendb.com/hero/%s' % (hero.lower().replace(' ', '-'),))
 
-        star_rate = ''
-        index = 0
-        while index in range(response.json()['results'][0]['rarity']):
-            star_rate += '⭐'
-            index = index + 1
+        try:
+            star_rate = ''
+            index = 0
+            while index in range(response.json()['results'][0]['rarity']):
+                star_rate += '⭐'
+                index = index + 1
+        except KeyError:
+            return await ctx.send("💌 | An error occurred. Did you enter in a valid hero name?", delete_after=10)
 
         embed = discord.Embed(
             title=response.json()['results'][0]['name'],
@@ -33,14 +36,14 @@ class Epic7(commands.Cog):
         try:
             await ctx.send(embed=embed)
         except KeyError:
-            return await ctx.send("An error occurred. Did you enter in a valid hero name?")
+            return await ctx.send("💌 | An error occurred. Did you enter in a valid hero name?", delete_after=10)
 
     @commands.command(name='Test')
     @commands.cooldown(1, 5, commands.BucketType.member)
     @commands.is_owner()
     async def test(self, ctx, *, hero = None):
         if hero == None:
-            return await ctx.send("Please name a valid hero")
+            return await ctx.send("💌 | Please name a valid hero", delete_after=10)
 
         response = requests.get('https://api.epicsevendb.com/hero/%s' % (hero.lower().replace(' ', '-'),))
         with open('epic_seven.json', 'w') as fp:

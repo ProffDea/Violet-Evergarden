@@ -3,6 +3,7 @@ import random
 import asyncio
 import time
 import datetime
+import json
 from datetime import datetime
 from discord.ext import commands
 from progression import initialize, message_gain, event_claim
@@ -818,6 +819,163 @@ class events(commands.Cog):
                 return
             except:
                 return
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload):
+        if str(payload.emoji) != '⭐':
+            return
+
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild:
+            return
+
+        if guild.id != 647205092029759488:
+            return
+
+        channel = guild.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        boardChannel = guild.get_channel(784689200628236318)
+
+        for reaction in message.reactions:
+            if str(reaction.emoji) != '⭐':
+                continue
+            count = reaction.count
+            break
+
+        member = payload.member
+        embed = discord.Embed(
+            title = '',
+            description = "[Click me!](%s)\n\n%s" % (message.jump_url, message.content),
+            color = discord.Color.gold(),
+            timestamp = datetime.utcnow()
+        )
+        embed.set_author(name=member, url=member.avatar_url, icon_url=member.avatar_url)
+        embed.set_footer(text="Msg ID: %s" % (payload.message_id,))
+        if message.embeds:
+            embed.add_field(name='Embed', value=message.embeds[0].description, inline=True)
+            embed.set_image(url=message.embeds[0].image.url)
+        if message.attachments:
+            if message.attachments[0].filename.endswith(('.mp4', '.mov', 'webm')):
+                embed.add_field(name='Video', value="[%s](%s)" % (message.attachments[0].filename, message.attachments[0].url))
+            embed.set_image(url=message.attachments[0].url)
+
+        with open('starboard.json', 'r') as f:
+            starboard = json.load(f)
+        
+        if "links" not in starboard:
+            starboard["links"] = {}
+        if str(message.id) in starboard["links"]:
+            messageUpdate = await boardChannel.fetch_message(starboard["links"][str(message.id)])
+            await messageUpdate.edit(content="⭐ **%s** %s" % (count, channel.mention))
+        else:
+            for value in starboard["links"].values():
+                if value == message.id:
+                    return
+            if count >= 3:
+                star = await boardChannel.send("⭐ **%s** %s" % (count, channel.mention), embed=embed)
+                starboard["links"][str(message.id)] = star.id
+
+        with open('starboard.json', 'w') as f:
+            json.dump(starboard, f, indent=4)
+
+    @commands.Cog.listener()
+    async def on_raw_reaction_remove(self, payload):
+        if str(payload.emoji) != '⭐':
+            return
+
+        guild = self.bot.get_guild(payload.guild_id)
+        if not guild:
+            return
+
+        if guild.id != 647205092029759488:
+            return
+
+        channel = guild.get_channel(payload.channel_id)
+        message = await channel.fetch_message(payload.message_id)
+        boardChannel = guild.get_channel(784689200628236318)
+
+        with open('starboard.json', 'r') as f:
+            starboard = json.load(f)
+
+        if 'links' not in starboard:
+            starboard['links'] = {}
+        if str(message.id) in starboard['links']:
+
+            count = 0
+            for reaction in message.reactions:
+                if str(reaction.emoji) != '⭐':
+                    continue
+                count = reaction.count
+                break
+
+            boardChannel = guild.get_channel(784689200628236318)
+            star = await boardChannel.fetch_message(starboard['links'][str(message.id)])
+            if count != 0:
+                await star.edit(content="⭐ **%s** %s" % (count, channel.mention))
+            else:
+                starboard['links'].pop(str(message.id))
+                await star.delete()
+
+                with open('starboard.json', 'w') as f:
+                    json.dump(starboard, f, indent=4)
+
+    @commands.Cog.listener()
+    async def on_message_delete(self, message):
+        if message.guild.id != 647205092029759488:
+            return
+
+        with open('starboard.json', 'r') as f:
+            starboard = json.load(f)
+
+        if 'links' not in starboard:
+            starboard['links'] = {}
+
+        if str(message.id) in starboard['links']:
+
+            boardChannel = message.guild.get_channel(784689200628236318)
+            star = await boardChannel.fetch_message(starboard['links'][str(message.id)])
+            await star.delete()
+
+            starboard['links'].pop(str(message.id))
+
+            with open('starboard.json', 'w') as f:
+                json.dump(starboard, f, indent=4)
+
+        for message_id in list(starboard['links']):
+            if starboard['links'][message_id] == message.id:
+                starboard['links'].pop(message_id)
+
+                with open('starboard.json', 'w') as f:
+                    json.dump(starboard, f, indent=4)
+
+    @commands.Cog.listener()
+    async def on_message_edit(self, before, after):
+        if after.guild.id != 647205092029759488:
+            return
+            
+        with open('starboard.json', 'r') as f:
+            starboard = json.load(f)
+
+        if str(after.id) in starboard['links']:
+            embed = discord.Embed(
+                title = '',
+                description = "[Click me!](%s)\n\n%s" % (after.jump_url, after.content),
+                color = discord.Color.gold(),
+                timestamp = datetime.utcnow()
+            )
+            embed.set_author(name=after.author, url=after.author.avatar_url, icon_url=after.author.avatar_url)
+            embed.set_footer(text="Msg ID: %s" % (after.id,))
+            if after.embeds:
+                embed.add_field(name='Embed', value=after.embeds[0].description, inline=True)
+                embed.set_image(url=after.embeds[0].image.url)
+            if after.attachments:
+                if after.attachments[0].filename.endswith(('.mp4', '.mov', 'webm')):
+                    embed.add_field(name='Video', value="[%s](%s)" % (after.attachments[0].filename, after.attachments[0].url))
+                embed.set_image(url=after.attachments[0].url)
+
+            boardChannel = after.guild.get_channel(784689200628236318)
+            star = await boardChannel.fetch_message(starboard['links'][str(after.id)])
+            await star.edit(embed=embed)
 
 def setup(bot):
     bot.add_cog(events(bot))

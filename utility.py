@@ -3,11 +3,14 @@ import time
 import datetime
 import asyncio
 import textwrap
+import json
 from datetime import datetime, timedelta
 from discord.ext import commands, tasks
 from predicate import higher_power
 from progression import initialize
 from async_postgresql import async_database
+from os import listdir
+from mutagen.mp3 import MP3
 
 class Utility(commands.Cog):
     def __init__(self, bot):
@@ -19,6 +22,7 @@ class Utility(commands.Cog):
     @commands.command(name='Prefix')
     @commands.has_permissions(manage_guild=True)
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def prefix(self, ctx, *, new_prefix=None):
         if not ctx.guild:
             await ctx.send("💌 | My prefix is `v.` or you can just @ me")
@@ -88,6 +92,7 @@ class Utility(commands.Cog):
     
     @commands.command(name='Level', aliases=['Experience', 'XP'])
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def level(self, ctx, *, member: discord.Member = None):
         if member == None:
             member = ctx.author
@@ -140,6 +145,7 @@ class Utility(commands.Cog):
     @commands.command(name='Voice_Role', aliases=['VR'])
     @commands.has_permissions(manage_guild=True)
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def vr(self, ctx, role: discord.Role = None, *, channel: discord.VoiceChannel = None):
         if role == None:
             db = async_database()
@@ -212,6 +218,7 @@ class Utility(commands.Cog):
     @commands.command(name='Remove_Voice_Role', aliases=['RVR'])
     @commands.has_permissions(manage_guild=True)
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def rvr(self, ctx, *, channel: discord.VoiceChannel = None):
         if channel == None:
             await ctx.send("Please select a valid channel")
@@ -239,6 +246,7 @@ class Utility(commands.Cog):
     @commands.command(name='Mute')
     @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def mute(self, ctx, *, member: discord.Member):
         if ctx.channel.overwrites_for(member).send_messages == False:
             return await ctx.send("**%s** is already muted in %s!" % (member.name, ctx.channel.mention))
@@ -294,6 +302,7 @@ class Utility(commands.Cog):
     @commands.command(name='Unmute')
     @commands.has_permissions(manage_messages=True)
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def unmute(self, ctx, *, member: discord.Member):
         if ctx.channel.overwrites_for(member).send_messages != False:
             return await ctx.send("**%s** is not muted in %s!" % (member.name, ctx.channel.mention))
@@ -341,6 +350,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='DisconnectAFK', aliases=['DCAFK'])
     @commands.has_permissions(manage_guild=True)
+    @commands.guild_only()
     async def disconnect_afk(self, ctx):
         db = async_database()
         await db.connect()
@@ -393,6 +403,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='Voice_Stats', aliases=['VS'])
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def voice_stats(self, ctx, *, member: discord.Member = None):
         if member == None:
             member = ctx.author
@@ -536,6 +547,7 @@ class Utility(commands.Cog):
 
     @commands.command(name='Voice_Leaderboard', aliases=['VL'])
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def voice_leaderboard(self, ctx):
         db = async_database()
         await db.connect()
@@ -651,6 +663,7 @@ class Utility(commands.Cog):
     # A personal command with the potential to become a feature
     @commands.command(name='Vote_Kick', aliases=['VK'])
     @commands.cooldown(1, 5, commands.BucketType.guild)
+    @commands.guild_only()
     async def vote_kick(self, ctx, member: discord.Member = None, *, frame='1h'):
         if member == None:
             return await ctx.send("💌 | Please give a valid member")
@@ -850,6 +863,7 @@ class Utility(commands.Cog):
     # Personal command that can be deleted
     @commands.command(name="18+")
     @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.guild_only()
     async def nsfw_role(self, ctx, *, member: discord.Member = None):
         # This command is for personal use
         
@@ -894,18 +908,168 @@ class Utility(commands.Cog):
 
     # This is a personal command that plays a specified mp3 file in the voice channel
     @commands.command(name="Sound", aliases=["S"])
-    @commands.cooldown(1, 5, commands.BucketType.member)
+    @commands.cooldown(1, 5, commands.BucketType.guild)
     @commands.guild_only()
-    async def sound(self, ctx):
+    async def sound(self, ctx, *audioList):
         await ctx.message.delete()
         if ctx.author.voice == None:
             return
-        if ctx.guild.me.voice == None:
-            await ctx.author.voice.channel.connect()
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("2020-11-08 15-39-08.mp3"))
-        ctx.voice_client.play(source)
-        await asyncio.sleep(2)
-        await ctx.voice_client.disconnect()
+        
+        folderExtensions = listdir("audio/")
+        folder = []
+        for audioFile in folderExtensions:
+            folder += [audioFile.replace('.mp3', '')]
+        opt = 'Available audio file names:\n'
+        for audioFile in folder:
+            opt += "`%s`, " % (audioFile,) if audioFile != folder[-1] else "`%s`" % (audioFile,)
+
+        if not audioList:
+            self.bot.get_command("Sound").reset_cooldown(ctx)
+            return await ctx.send(opt, delete_after=20)
+        for audio in audioList:
+            if audio.lower() not in folder:
+                return await ctx.send(opt, delete_after=20)
+
+        count = 0
+        for audio in audioList:
+            count = count + 1
+            if count > 3:
+                break
+            length = MP3("audio/%s.mp3" % (audio,)).info.length
+
+            if ctx.guild.me.voice == None:
+                await ctx.author.voice.channel.connect()
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio("audio/%s.mp3" % (audio.lower(),)))
+            ctx.voice_client.play(source)
+            await asyncio.sleep(length)
+            ctx.voice_client.stop()
+
+        if ctx.voice_client != None:
+            await ctx.voice_client.disconnect()
+
+    @commands.command(name="Say", aliases=["Repeat", "Echo"])
+    @commands.is_owner()
+    @commands.guild_only()
+    async def say(self, ctx, *, message):
+        await ctx.message.delete()
+        await ctx.send(message)
+
+    @commands.command(name="Confess")
+    @commands.cooldown(1, 600, commands.BucketType.user)
+    async def confess(self, ctx, *, confession=None):
+        if ctx.guild:
+            self.bot.get_command("Confess").reset_cooldown(ctx)
+        else:
+            with open('confess.json', 'r') as f:
+                confess = json.load(f)
+
+            if "bans" not in confess:
+                confess["bans"] = []
+            if ctx.author.id in confess["bans"]:
+                self.bot.get_command("Confess").reset_cooldown(ctx)
+                return await ctx.send("💌 | You are banned from using this feature!", delete_after=10)
+
+            if confession == None:
+                self.bot.get_command("Confess").reset_cooldown(ctx)
+                return await ctx.send('💌 | Try typing out your confession after "v.confess" in the same message', delete_after=10)
+
+            embed = discord.Embed(
+                title='',
+                description=confession,
+                color=discord.Color.purple(),
+                timestamp=datetime.utcnow()
+            )
+            embed.set_author(name='Anonymous Confession #000', icon_url=self.bot.user.avatar_url)
+            embed.set_footer(text='DM me "v.confess" to confess')
+            if ctx.message.attachments:
+                embed.set_image(url=ctx.message.attachments[0].url)
+
+            event = await ctx.send("```💌 | Please verify your input:```", embed=embed)
+            await event.add_reaction('✅')
+            await event.add_reaction('❌')
+
+            def verify(reaction, user):
+                return user == ctx.author and str(reaction.emoji) in ['✅', '❌'] and reaction.message.id == event.id
+            
+            cancelation = ''
+            try:
+                result = await self.bot.wait_for('reaction_add', check=verify, timeout=60)
+                if str(result[0].emoji) == '❌':
+                    cancelation += "💌 | Confession command has been canceled!"
+            except asyncio.TimeoutError:
+                cancelation += "💌 | Timeout"
+
+            await event.delete()
+            if cancelation != '':
+                self.bot.get_command("Confess").reset_cooldown(ctx)
+                await ctx.send(cancelation, delete_after=10)
+            else:
+
+                if "counter" not in confess:
+                    confess["counter"] = 0
+                if "channel" not in confess:
+                    confess["channel"] = 782886834114920448
+                if "users" not in confess:
+                    confess["users"] = {}
+
+                confessChannel = self.bot.get_channel(confess["channel"])
+                confess["counter"] += 1
+                number = confess["counter"]
+
+                if str(ctx.author.id) not in confess["users"]:
+                    confess["users"][str(ctx.author.id)] = []
+                if number not in confess["users"][str(ctx.author.id)]:
+                    confess["users"][str(ctx.author.id)] += [number]
+
+                with open('confess.json', 'w') as f:
+                    json.dump(confess, f, indent=4)
+                
+                embed.set_author(name='Anonymous Confession #%s' % (str(number),), icon_url=confessChannel.guild.icon_url)
+
+                await confessChannel.send(embed=embed)
+                await ctx.send("💌 | Check out your confession in %s! It's #%s" % (confessChannel.mention, str(number)))
+
+    @commands.group(name="Ban", invoke_without_command=True, case_insensitive=True)
+    @commands.cooldown(1, 5, commands.BucketType.user)
+    @commands.has_permissions(ban_members=True)
+    @commands.guild_only()
+    async def ban(self, ctx):
+        pass
+
+    @ban.command(name="Confession")
+    async def confession(self, ctx, *confessionNumber):
+        with open("confess.json", 'r') as f:
+            confess = json.load(f)
+        if "bans" not in confess:
+            confess["bans"] = []
+        valid = []
+        for numberInput in confessionNumber:
+            if not numberInput.isdigit():
+                return await ctx.send("💌 | Please make sure all arguments are numbers!", delete_after=10)
+            if int(numberInput) > confess["counter"] or int(numberInput) <= 0:
+                return await ctx.send("💌 | Number %s is invalid, please make sure they're all valid!" % (numberInput,), delete_after=10)
+            for userID in confess["users"]:
+                if int(numberInput) in confess["users"][userID]:
+                    valid += [int(numberInput)]
+                    if int(userID) not in confess["bans"]:
+                        confess["bans"] += [int(userID)]
+        validClean = []
+        for number in valid:
+            if number not in validClean:
+                validClean.append(number)
+        if not validClean:
+            return await ctx.send("💌 | None of the inputs exist!", delete_after=10)
+        report = "💌 | Users that posted confessions "
+        for number in validClean:
+            if len(validClean) > 1:
+                report += "%s, " % (number,) if number != validClean[-1] else "and %s" % (number,)
+            else:
+                report += "%s" % (number,)
+        report += " can no longer use the confess feature"
+        await ctx.send(report)
+
+        with open("confess.json", 'w') as f:
+            json.dump(confess, f, indent=4)
 
     @tasks.loop(seconds=60)
     async def check_time(self):

@@ -33,8 +33,28 @@ class CommandErrorHandler(commands.Cog):
             if ctx.command.qualified_name == 'exampleCommandNameHere':
                 pass
             await ctx.send("💌 | Sorry, please give a valid argument", delete_after=10)
+        elif isinstance(error, commands.MissingRequiredArgument):
+            await ctx.send("💌 | Missing required argument")
         elif isinstance(error, commands.CommandOnCooldown):
-            await ctx.send("💌 | %s" % (error), delete_after=10)
+            cooldown = round(error.retry_after)
+            hour = 0
+            minute = 0
+            while cooldown >= 60:
+                cooldown = cooldown - 60
+                minute = minute + 1
+            while minute >= 60:
+                minute = minute - 60
+                hour = hour + 1
+            if hour != 0:
+                hour = "%s hour, " % (hour,) if hour == 1 else "%s hours, " % (hour,)
+            if minute != 0:
+                minute = "%s minute, and " % (minute,) if minute == 1 else "%s minutes, and " % (minute,)
+            if hour == 0:
+                hour = ''
+            if minute == 0:
+                minute = ''
+            second = "%s second" % (cooldown,) if cooldown == 1 else "%s seconds" % (cooldown,)
+            await ctx.send("💌 | Please try again in %s%s%s" % (hour, minute, second), delete_after=10)
         else:
             print("Ignoring exception in command %s:" % (ctx.command), file=sys.stderr)
             traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
